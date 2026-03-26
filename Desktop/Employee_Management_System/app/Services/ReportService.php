@@ -7,29 +7,26 @@ use App\Models\Department;
 use App\Models\Attendance;
 use App\Models\Salary;
 use App\Models\Leave;
+use App\Http\Resources\Admin\EmployeeResource;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
 class ReportService
 {
-    
+    const SCORE_PRESENT = 1;
+    const SCORE_LATE = 0.5;
+    const SCORE_ABSENT = -1;
+
+    // Employee Report 
     public function employeeReport()
     {
-        return Employee::with(['department', 'workSchedule'])
-            ->get()
-            ->map(function ($emp) {
-                return [
-                    'id' => $emp->id,
-                    'name' => $emp->user->name ?? null,
-                    'department' => $emp->department->name ?? null,
-                    'role' => $emp->user->role ?? null,
-                    'status' => $emp->employment_status,
-                    'hire_date' => $emp->hire_date,
-                    'schedule' => $emp->workSchedule->name ?? null,
-                ];
-            });
+        return EmployeeResource::collection(
+            Employee::with(['department', 'workSchedule', 'user'])
+                ->paginate(3)
+        );
     }
 
-   
+    // Department Distribution
     public function departmentDistribution()
     {
         return Department::withCount('employees')
@@ -40,70 +37,87 @@ class ReportService
             ]);
     }
 
-    
-        public function attendanceReport($filters)
+    // Attendance Report
+    public function attendanceReport($filters)
     {
-        $month = $filters['month'];
-        $year = $filters['year'];
+        $attendances = $this->getFilteredAttendances($filters);
 
-        $query = Attendance::with(['employee.user']);
+        return [
+            'daily_report' => $this->buildDailyReport($attendances, $filters),
+            'late_trend' => $this->buildLateTrend($attendances),
+            'attendance_scores' => $this->buildAttendanceScores($attendances),
+        ];
+    }
 
-       
-        $query->whereMonth('date', $month)
-              ->whereYear('date', $year);
+    private function getFilteredAttendances($filters)
+    {
+        $query = Attendance::with(['employee.user'])
+            ->whereMonth('date', $filters['month'])
+            ->whereYear('date', $filters['year']);
 
-       
-        if (!empty($filters['employee_id'])) {
-            $query->where('employee_id', $filters['employee_id']);
-        }
-
-       
-        if (!empty($filters['department_id'])) {
-            $query->whereHas('employee', function ($q) use ($filters) {
-                $q->where('department_id', $filters['department_id']);
-            });
-        }
-
-        $attendances = $query->get();
-
-       
-        $grouped = $attendances->groupBy(function ($item) {
-            return Carbon::parse($item->date)->format('Y-m-d');
+        $query->when($filters['employee_id'] ?? null, function ($q, $id) {
+            $q->where('employee_id', $id);
         });
 
-        $daysInMonth = Carbon::create($year, $month)->daysInMonth;
+        $query->when($filters['department_id'] ?? null, function ($q, $deptId) {
+            $q->whereHas('employee', function ($q2) use ($deptId) {
+                $q2->where('department_id', $deptId);
+            });
+        });
+
+        return $query->get();
+    }
+
+    private function buildDailyReport($attendances, $filters)
+    {
+        $grouped = $attendances->groupBy(fn($item) =>
+            Carbon::parse($item->date)->format('Y-m-d')
+        );
+
+        $daysInMonth = Carbon::create($filters['year'], $filters['month'])->daysInMonth;
 
         $daily = [];
 
         for ($i = 1; $i <= $daysInMonth; $i++) {
 
-            $date = Carbon::create($year, $month, $i)->format('Y-m-d');
-
+            $date = Carbon::create($filters['year'], $filters['month'], $i)->format('Y-m-d');
             $records = $grouped[$date] ?? collect();
 
             $daily[] = [
                 'date' => $date,
-
-                'summary' => [
-                    'present' => $records->where('status', 'present')->count(),
-                    'late' => $records->where('status', 'late')->count(),
-                    'absent' => $records->where('status', 'absent')->count(),
-                ],
-
-                'employees' => $records->map(function ($att) {
-                    return [
-                        'employee_id' => $att->employee_id,
-                        'name' => $att->employee->user->name ?? null,
-                        'status' => $att->status,
-                        'check_in' => $att->check_in,
-                        'check_out' => $att->check_out,
-                    ];
-                })->values()
+                'summary' => $this->buildSummary($records),
+                'employees' => $this->mapEmployees($records),
             ];
         }
 
-      
-        $lateTrend = $attendances
+        return $daily;
+    }
+
+    private function buildSummary($records)
+    {
+        return [
+            'present' => $records->where('status', 'present')->count(),
+            'late' => $records->where('status', 'late')->count(),
+            'absent' => $records->where('status', 'absent')->count(),
+        ];
+    }
+
+    private function mapEmployees($records)
+    {
+        return $records->map(function ($att) {
+            return [
+                'employee_id' => $att->employee_id,
+                'name' => $att->employee->user->name ?? null,
+                'status' => $att->status,
+                'check_in' => $att->check_in,
+                'check_out' => $att->check_out,
+            ];
+        })->values();
+    }
+
+    private function buildLateTrend($attendances)
+    {
+        return $attendances
             ->where('status', 'late')
             ->groupBy('employee_id')
             ->map(function ($records) {
@@ -118,46 +132,41 @@ class ReportService
             })
             ->sortByDesc('late_count')
             ->values();
-
-        
-        $employeeStats = $attendances->groupBy('employee_id');
-
-        $scores = $employeeStats->map(function ($records) {
-
-            $employee = $records->first()->employee;
-
-            $total = $records->count();
-            $present = $records->where('status', 'present')->count();
-            $late = $records->where('status', 'late')->count();
-            $absent = $records->where('status', 'absent')->count();
-
-          
-            $score = ($present * 1) + ($late * 0.5) - ($absent * 1);
-
-            return [
-                'employee_id' => $employee->id,
-                'name' => $employee->user->name ?? null,
-
-                'stats' => [
-                    'total_days' => $total,
-                    'present' => $present,
-                    'late' => $late,
-                    'absent' => $absent,
-                ],
-
-                'score' => round($score, 2)
-            ];
-        })->sortByDesc('score')->values();
-
-        
-        return [
-            'daily_report' => $daily,
-            'late_trend' => $lateTrend,
-            'attendance_scores' => $scores,
-        ];
     }
 
-   
+    private function buildAttendanceScores($attendances)
+    {
+        return $attendances->groupBy('employee_id')
+            ->map(function ($records) {
+
+                $employee = $records->first()->employee;
+
+                $present = $records->where('status', 'present')->count();
+                $late = $records->where('status', 'late')->count();
+                $absent = $records->where('status', 'absent')->count();
+
+                $score =
+                    ($present * self::SCORE_PRESENT) +
+                    ($late * self::SCORE_LATE) +
+                    ($absent * self::SCORE_ABSENT);
+
+                return [
+                    'employee_id' => $employee->id,
+                    'name' => $employee->user->name ?? null,
+                    'stats' => [
+                        'total_days' => $records->count(),
+                        'present' => $present,
+                        'late' => $late,
+                        'absent' => $absent,
+                    ],
+                    'score' => round($score, 2),
+                ];
+            })
+            ->sortByDesc('score')
+            ->values();
+    }
+
+    // Salary Insights
     public function salaryInsights($month, $year)
     {
         $salaries = Salary::where('month', $month)
@@ -172,7 +181,7 @@ class ReportService
         ];
     }
 
-
+    // Leave Insights
     public function leaveInsights($month, $year)
     {
         $leaves = Leave::whereMonth('start_date', $month)
@@ -186,4 +195,22 @@ class ReportService
             'pending' => $leaves->where('status', 'pending')->count(),
         ];
     }
+
+        public function attendanceReportPdf($filters)
+    {
+        $data = $this->attendanceReport($filters);
+
+        $pdf = Pdf::loadView('attendance', [
+            'data'  => $data,
+            'month' => $filters['month'],
+            'year'  => $filters['year'],
+        ]);
+
+        $pdf->setPaper('A4', 'landscape');
+
+       
+        return $pdf->download("attendance-{$filters['month']}-{$filters['year']}.pdf");
+    }
+
+    
 }

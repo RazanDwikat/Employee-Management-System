@@ -79,4 +79,6 @@ class Salary extends Model
             'rules' => $this->rules
         ];
     }
+
+    
 }

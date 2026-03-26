@@ -17,9 +17,8 @@ class ReportController extends Controller
     //  Employee Report
     public function employees()
     {
-        return response()->json(
-            $this->service->employeeReport()
-        );
+        return $this->service->employeeReport();
+        
     }
 
     // Department Distribution
@@ -44,6 +43,16 @@ class ReportController extends Controller
         $this->service->attendanceReport($request->all())
     );
 }
+
+     public function attendancePdf(Request $request)
+    {
+        $request->validate([
+            'month' => 'required|integer',
+            'year'  => 'required|integer',
+        ]);
+
+        return $this->service->attendanceReportPdf($request->all());
+    }
 
     //  Salary Insights
     public function salaries(Request $request)

@@ -63,6 +63,8 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::get('/attendance', [ReportController::class, 'attendance']);
     Route::get('/salaries', [ReportController::class, 'salaries']);
     Route::get('/leaves', [ReportController::class, 'leaves']);
+
+    Route::get('/attendance/pdf', [ReportController::class, 'attendancePdf']);
    });
     
 
