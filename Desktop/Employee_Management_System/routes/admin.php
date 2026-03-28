@@ -51,9 +51,8 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     
     // Salary Tracking
     Route::post('/salaries/generate', [SalaryTrackingController::class, 'generate']);
-
     Route::put('/salaries/{id}/status', [SalaryTrackingController::class, 'updateStatus']);
-
+    Route::put('/salaries/status', [SalaryTrackingController::class, 'updateStatus']);
     Route::post('/payroll-adjustments', [SalaryTrackingController::class, 'addAdjustment']);
     
    Route::prefix('reports')->group(function () {
@@ -63,7 +62,6 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::get('/attendance', [ReportController::class, 'attendance']);
     Route::get('/salaries', [ReportController::class, 'salaries']);
     Route::get('/leaves', [ReportController::class, 'leaves']);
-
     Route::get('/attendance/pdf', [ReportController::class, 'attendancePdf']);
    });
     

@@ -25,7 +25,7 @@ class SalaryService
             ->first();
 
         if (!$salarySetting) {
-            abort(400, 'No salary setting found');
+            throw new \InvalidArgumentException("No salary setting found for employee_id {$employee->id} at {$month}/{$year}");
         }
 
         $baseSalary = $salarySetting->base_salary;
@@ -179,34 +179,85 @@ class SalaryService
         $employees = Employee::with('workSchedule')->get();
 
         $results = [];
+        $errors = [];
 
         foreach ($employees as $employee) {
+            try {
+                $data = $this->calculateSalaryForEmployee($employee, $month, $year);
 
-            $exists = Salary::where('employee_id', $employee->id)
-                ->where('month', $month)
-                ->where('year', $year)
-                ->exists();
+                $salary = Salary::updateOrCreate(
+                    [
+                        'employee_id' => $employee->id,
+                        'month' => $month,
+                        'year' => $year,
+                    ],
+                    [
+                        'base_salary' => $data['base_salary'],
+                        'total_bonus' => $data['total_bonus'],
+                        'total_deductions' => $data['total_deductions'],
+                        'net_salary' => $data['net_salary'],
+                        'salary_details' => json_encode($data['details']),
+                        'status' => Salary::where('employee_id', $employee->id)->where('month', $month)->where('year', $year)->value('status') ?? 'draft'
+                    ]
+                );
 
-            if ($exists) continue;
-
-            $data = $this->calculateSalaryForEmployee($employee, $month, $year);
-
-            $salary = Salary::create([
-                'employee_id' => $employee->id,
-                'month' => $month,
-                'year' => $year,
-                'base_salary' => $data['base_salary'],
-                'total_bonus' => $data['total_bonus'],
-                'total_deductions' => $data['total_deductions'],
-                'net_salary' => $data['net_salary'],
-                'salary_details' => json_encode($data['details']),
-                'status' => 'draft'
-            ]);
-
-            $results[] = $salary;
+                $results[] = $salary;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'employee_id' => $employee->id,
+                    'name' => $employee->name ?? null,
+                    'message' => $e->getMessage(),
+                ];
+            }
         }
 
-        return $results;
+        $rules = PayrollRule::all();
+
+        return [
+            'generated' => $results,
+            'rules' => $rules,
+            'errors' => $errors,
+        ];
+    }
+
+    public function updateSalaryStatus(int $id, string $status): Salary
+    {
+        $salary = Salary::findOrFail($id);
+        $salary->update(['status' => $status]);
+
+        return $salary;
+    }
+
+    public function bulkUpdateSalaryStatus(int $month, int $year, string $status, ?int $employeeId = null): int
+    {
+        $query = Salary::where('month', $month)
+            ->where('year', $year);
+
+        if ($employeeId) {
+            $query->where('employee_id', $employeeId);
+        }
+
+        return $query->update(['status' => $status]);
+    }
+
+    public function addPayrollAdjustment(array $data)
+    {
+        return PayrollAdjustment::create($data);
+    }
+
+    public function getMySalaries(int $employeeId, ?int $month = null, ?int $year = null)
+    {
+        $query = Salary::where('employee_id', $employeeId);
+
+        if ($month) {
+            $query->where('month', $month);
+        }
+
+        if ($year) {
+            $query->where('year', $year);
+        }
+
+        return $query->orderByDesc('year')->orderByDesc('month');
     }
 
    

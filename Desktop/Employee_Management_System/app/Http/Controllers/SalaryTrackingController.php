@@ -6,7 +6,13 @@ use Illuminate\Http\Request;
 use App\Services\SalaryService;
 use App\Models\Salary;
 use App\Models\PayrollAdjustment;
+use App\Models\PayrollRule;
+use App\Http\Requests\Admin\GenerateSalaryRequest;
+use App\Http\Requests\Admin\UpdateSalaryStatusRequest;
+use App\Http\Requests\Admin\MySalariesRequest;
 use App\Http\Requests\Admin\AddPayrollAdjustmentRequest;
+use App\Http\Resources\Admin\SalaryGenerationResource;
+use App\Http\Resources\Admin\SalaryResource;
 use App\Models\WorkSchedule;
 use App\Http\Controllers\Controller;    
 
@@ -20,41 +26,47 @@ class SalaryTrackingController extends Controller
     }
 
    
-    public function generate(Request $request)
+    public function generate(GenerateSalaryRequest $request)
     {
-        $request->validate([
-            'month' => 'required|integer|min:1|max:12',
-            'year' => 'required|integer|min:2020'
-        ]);
-
-        $salaries = $this->service->generateMonthlySalaries(
+        $result = $this->service->generateMonthlySalaries(
             $request->month,
             $request->year
         );
 
-        return response()->json([
-            'message' => 'Salaries generated successfully',
-            'count' => count($salaries),
-            'data' => $salaries
-        ]);
+        return new SalaryGenerationResource($result);
     }
 
    
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(UpdateSalaryStatusRequest $request, $id = null)
     {
-        $request->validate([
-            'status' => 'required|in:draft,finalized,paid'
-        ]);
+        if ($id) {
+            $salary = $this->service->updateSalaryStatus($id, $request->status);
 
-        $salary = Salary::findOrFail($id);
+            return response()->json([
+                'message' => 'Salary status updated',
+                'salary' => new SalaryResource($salary),
+            ]);
+        }
 
-        $salary->update([
-            'status' => $request->status
-        ]);
+        if (!$request->has('month') || !$request->has('year')) {
+            return response()->json([
+                'message' => 'month and year are required when updating bulk salary status'
+            ], 400);
+        }
+
+        $updatedCount = $this->service->bulkUpdateSalaryStatus(
+            $request->month,
+            $request->year,
+            $request->status,
+            $request->employee_id ?? null
+        );
 
         return response()->json([
-            'message' => 'Salary status updated',
-            'salary' => $salary
+            'message' => 'Bulk salary status updated',
+            'updated_count' => $updatedCount,
+            'month' => $request->month,
+            'year' => $request->year,
+            'status' => $request->status,
         ]);
     }
 
@@ -65,13 +77,7 @@ class SalaryTrackingController extends Controller
     {
         $data = $request->validated();
 
-        $adjustment = PayrollAdjustment::create([
-            'employee_id' => $data['employee_id'],
-            'type' => $data['type'],
-            'amount' => $data['amount'],
-            'reason' => $data['reason'] ?? null,
-            'adjustment_date' => $data['adjustment_date']
-        ]);
+        $adjustment = $this->service->addPayrollAdjustment($data);
 
         return response()->json([
             'message' => 'Adjustment added successfully',
@@ -82,46 +88,19 @@ class SalaryTrackingController extends Controller
   
 
     //  My salaries 
-  public function mySalaries(Request $request)
-{
-    $employee = auth()->user()->employee;
+    public function mySalaries(MySalariesRequest $request)
+    {
+        $employee = auth()->user()->employee;
 
-    $query = Salary::where('employee_id', $employee->id);
-
-    if ($request->month) {
-        $query->where('month', $request->month);
-    }
-
-    if ($request->year) {
-        $query->where('year', $request->year);
-    }
-
-    $salaries = $query
-        ->orderByDesc('year')
-        ->orderByDesc('month')
+        $salaries = $this->service->getMySalaries(
+            $employee->id,
+            $request->month,
+            $request->year
+        )
         ->paginate(10);
 
-    $salaries->getCollection()->transform(function ($salary) {
-
-        return [
-            'id' => $salary->id,
-            'month' => $salary->month,
-            'year' => $salary->year,
-
-            'summary' => [
-                'base_salary' => $salary->base_salary,
-                'bonus' => $salary->total_bonus,
-                'deductions' => $salary->total_deductions,
-                'net_salary' => $salary->net_salary,
-                'status' => $salary->status,
-            ],
-
-            'details' => json_decode($salary->salary_details, true)
-        ];
-    });
-
-    return response()->json($salaries);
-}
+        return SalaryResource::collection($salaries);
+    }
 
     
 }

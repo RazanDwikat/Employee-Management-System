@@ -9,20 +9,20 @@ class SalaryResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-    //     dd(
-    //     $this->employee,
-    //     $this->employee?->user
-    // );
-
         return [
             'id' => $this->id,
             'employee_id' => $this->employee_id,
-            
-            'employee_name' => $this->employee?->user?->name,
+            'month' => $this->month,
+            'year' => $this->year,
             'base_salary' => $this->base_salary,
-            'effective_from' => $this->effective_from,
+            'total_bonus' => $this->total_bonus,
+            'total_deductions' => $this->total_deductions,
+            'net_salary' => $this->net_salary,
+            'status' => $this->status,
             'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            'salary_details' => json_decode($this->salary_details, true),
+            'adjustments' => $this->adjustments,
         ];
-        dd($this->employee);
     }
 }
