@@ -36,7 +36,7 @@ class SalaryTrackingController extends Controller
         return new SalaryGenerationResource($result);
     }
 
-   
+   //  Update salary status (single or bulk)
     public function updateStatus(UpdateSalaryStatusRequest $request, $id = null)
     {
         if ($id) {

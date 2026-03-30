@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\ReportService;
+use App\Http\Requests\Employee\MySalariesRequest;
 
 class ReportController extends Controller
 {
@@ -44,23 +45,15 @@ class ReportController extends Controller
     );
 }
 
-     public function attendancePdf(Request $request)
+     public function attendancePdf(MySalariesRequest $request)
     {
-        $request->validate([
-            'month' => 'required|integer',
-            'year'  => 'required|integer',
-        ]);
-
-        return $this->service->attendanceReportPdf($request->all());
+    
+        return $this->service->attendanceReportPdf($request->validated());
     }
 
     //  Salary Insights
-    public function salaries(Request $request)
+    public function salaries(MySalariesRequest $request)
     {
-        $request->validate([
-            'month' => 'required',
-            'year' => 'required'
-        ]);
 
         return response()->json(
             $this->service->salaryInsights($request->month, $request->year)
@@ -68,13 +61,9 @@ class ReportController extends Controller
     }
 
     // Leave Insights
-    public function leaves(Request $request)
+    public function leaves(MySalariesRequest $request)
     {
-        $request->validate([
-            'month' => 'required',
-            'year' => 'required'
-        ]);
-
+    
         return response()->json(
             $this->service->leaveInsights($request->month, $request->year)
         );

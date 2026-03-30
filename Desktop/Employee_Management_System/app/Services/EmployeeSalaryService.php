@@ -10,7 +10,7 @@ class EmployeeSalaryService
 {
     public function setSalary(array $data)
     {
-        // تحقق أنه ما في راتب بنفس التاريخ
+       
         $exists = EmployeeSalarySetting::where('employee_id', $data['employee_id'])
             ->where('effective_from', $data['effective_from'])
             ->exists();
@@ -22,7 +22,7 @@ class EmployeeSalaryService
         return EmployeeSalarySetting::create($data);
     }
 
-    // 🔥 جلب الراتب الحالي حسب تاريخ
+    
     public function getCurrentSalary($employeeId, $date = null)
     {
         $date = $date ?? now()->toDateString();
