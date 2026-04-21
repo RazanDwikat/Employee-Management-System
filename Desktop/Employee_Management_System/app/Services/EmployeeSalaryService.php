@@ -22,14 +22,4 @@ class EmployeeSalaryService
         return EmployeeSalarySetting::create($data);
     }
 
-    
-    public function getCurrentSalary($employeeId, $date = null)
-    {
-        $date = $date ?? now()->toDateString();
-
-        return EmployeeSalarySetting::where('employee_id', $employeeId)
-            ->where('effective_from', '<=', $date)
-            ->orderByDesc('effective_from')
-            ->first();
-    }
 }

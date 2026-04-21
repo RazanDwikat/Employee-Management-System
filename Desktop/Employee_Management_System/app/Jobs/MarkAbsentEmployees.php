@@ -9,24 +9,23 @@ use Carbon\Carbon;
 class MarkAbsentEmployees
 {
     public function handle(): void
-    {
-        $today = Carbon::today();
+{
+    $today = Carbon::today();
 
-        $employees = Employee::all();
+    $employees = Employee::all();
 
-        foreach ($employees as $employee) {
+    $attended = Attendance::whereDate('date', $today)
+        ->pluck('employee_id')
+        ->toArray();
 
-            $exists = Attendance::where('employee_id', $employee->id)
-                ->whereDate('date', $today)
-                ->exists();
+    $absentEmployees = $employees->whereNotIn('id', $attended);
 
-            if (!$exists) {
-                Attendance::create([
-                    'employee_id' => $employee->id,
-                    'date' => $today,
-                    'status' => 'absent'
-                ]);
-            }
-        }
+    foreach ($absentEmployees as $employee) {
+        Attendance::create([
+            'employee_id' => $employee->id,
+            'date' => $today,
+            'status' => 'absent'
+        ]);
     }
+}
 }

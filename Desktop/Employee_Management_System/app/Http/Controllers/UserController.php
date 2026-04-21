@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use App\Http\Requests\Admin\DeleteUserRequest;
+use Illuminate\Database\QueryException;
 
 class UserController extends Controller
 {
@@ -47,7 +48,7 @@ class UserController extends Controller
 
 
     public function store(StoreUserRequest $request)
-    {
+{
         $adminId = auth()->id();
 
         $user = $this->userService->createUser(
@@ -59,7 +60,8 @@ class UserController extends Controller
             'message' => 'User created successfully',
             'data' => UserResource::make($user)
         ], 201);
-    }
+
+}
 
 
     public function update(UpdateUserRequest $request, User $user)

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\ReportService;
-use App\Http\Requests\Employee\MySalariesRequest;
+use App\Http\Requests\Admin\MySalariesRequest;
 
 class ReportController extends Controller
 {

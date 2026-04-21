@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Hash;
 use App\Events\UserCreated;
+use Illuminate\Database\QueryException;
 
 class UserService
 {
@@ -48,21 +49,33 @@ class UserService
 
     public function createUser(array $data, $adminId)
     {
-        $data['password'] = Hash::make($data['password']);
+        try {
+            $data['password'] = Hash::make($data['password']);
 
-        $user = User::create($data);
+            $user = User::create($data);
 
-        if (in_array($user->role, ['employee', 'manager'])) {
-            Employee::create([
-                'user_id' => $user->id,
-                'employee_number' => $this->generateEmployeeNumber(),
-            ]);
+            if (in_array($user->role, ['employee', 'manager'])) {
+                Employee::create([
+                   'user_id' => $user->id,
+                   'employee_number' => $this->generateEmployeeNumber(),
+               ]);
+          }
+
+          event(new UserCreated($adminId, $user));
+
+          return $user;
+
+        } catch (QueryException $e) {
+
+    
+        if ($e->errorInfo[1] == 1062) {
+           throw new \Exception('Email already exists');
         }
 
-        event(new UserCreated($adminId, $user));
-
-        return $user;
+       
+        throw new \Exception('Something went wrong');
     }
+}
 
    
     private function generateEmployeeNumber()
@@ -104,7 +117,7 @@ class UserService
         ]);
     }
 
-    // Soft delete
+   
     $user->delete();
 }
 
