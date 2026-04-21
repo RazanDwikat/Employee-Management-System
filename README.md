@@ -72,15 +72,14 @@ This system helps organizations to:
 - Authentication: JWT
 
 ---
+## API Documentation
+[View API Docs] https://documenter.getpostman.com/view/49027821/2sBXqFM2jB
 
 ## Installation
 
 ### 1. Clone repository
 ```bash
 ---
-
-## API Documentation
-[View API Docs] https://documenter.getpostman.com/view/49027821/2sBXqFM2jB
 
 git clone <repo-url>
 cd employee_management_system
