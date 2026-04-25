@@ -43,6 +43,11 @@ const router = createRouter({
           path: 'departments',
           name: 'DepartmentManagement',
           component: () => import('../views/admin/DepartmentManagement.vue')
+        },
+        {
+          path: 'profile',
+          name: 'AdminProfile',
+          component: () => import('../views/admin/Profile.vue')
         }
       ]
     },

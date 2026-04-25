@@ -80,18 +80,34 @@ class UserController extends Controller
 
     public function updateProfile(UpdateProfileRequest $request)
     {
-        $user = auth()->user();
-        $data = $request->validated();
+        try {
+            $user = auth()->user();
+            $data = $request->validated();
 
-        if (isset($data['password'])) {
-            $data['password'] = Hash::make($data['password']);
+            $updatedUser = $this->userService->updateProfile($user, $data);
+
+            return response()->json([
+                'message' => 'Profile updated successfully',
+                'user' => UserResource::make($updatedUser)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Current password is incorrect',
+                'errors' => ['current_password' => [$e->getMessage()]]
+            ], 422);
         }
+    }
 
-        $user->update($data);
+
+    public function reactivateUser($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $reactivatedUser = $this->userService->reactivateUser($user);
 
         return response()->json([
-            'message' => 'Profile updated successfully',
-            'data' => UserResource::make($user)
+            'message' => 'User reactivated successfully',
+            'data' => UserResource::make($reactivatedUser)
         ]);
     }
 

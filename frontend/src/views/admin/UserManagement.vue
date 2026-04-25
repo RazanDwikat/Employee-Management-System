@@ -7,7 +7,7 @@
         <div class="search-box">
           <input 
             v-model="searchQuery" 
-            @input="fetchUsers"
+            @input="applyFrontendFilters"
             type="text" 
             placeholder="Search by name..."
             class="search-input"
@@ -18,7 +18,7 @@
         <div class="filter-controls">
           <select 
             v-model="filters.role" 
-            @change="fetchUsers"
+            @change="applyFrontendFilters"
             class="filter-select"
             :disabled="loading"
           >
@@ -30,7 +30,7 @@
           
           <select 
             v-model="filters.status" 
-            @change="fetchUsers"
+            @change="applyFrontendFilters"
             class="filter-select"
             :disabled="loading"
           >
@@ -91,7 +91,8 @@
             </td>
             <td>
               <button @click="editUser(user)" class="edit-btn">Edit</button>
-              <button @click="deleteUser(user.id)" class="delete-btn">Delete</button>
+              <button v-if="user.status === 'inactive'" @click="reactivateUser(user.id)" class="reactivate-btn">Reactivate</button>
+              <button v-else @click="deleteUser(user.id)" class="delete-btn">Delete</button>
             </td>
           </tr>
         </tbody>
@@ -107,15 +108,17 @@
             <label>Name</label>
             <input v-model="userForm.name" type="text" required :disabled="loading" />
           </div>
-          <div class="form-group">
+          
+          <!-- Email and Password only for Add New User -->
+          <div v-if="!editingUser" class="form-group">
             <label>Email</label>
             <input v-model="userForm.email" type="email" required :disabled="loading" />
           </div>
-          <div class="form-group">
+          <div v-if="!editingUser" class="form-group">
             <label>Password</label>
-            <input v-model="userForm.password" type="password" :required="!editingUser" :disabled="loading" />
-            <small v-if="editingUser">Leave empty to keep current password</small>
+            <input v-model="userForm.password" type="password" required :disabled="loading" />
           </div>
+          
           <div class="form-group">
             <label>Role</label>
             <select v-model="userForm.role" required :disabled="loading">
@@ -123,6 +126,23 @@
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
               <option value="employee">Employee</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Employee Number</label>
+            <input v-model="userForm.employee_number" type="text" :disabled="loading" />
+          </div>
+          <div class="form-group">
+            <label>Hire Date</label>
+            <input v-model="userForm.hire_date" type="date" :disabled="loading" />
+          </div>
+          <div class="form-group">
+            <label>Employment Status</label>
+            <select v-model="userForm.employment_status" :disabled="loading">
+              <option value="">Select Status</option>
+              <option value="active">Active</option>
+              <option value="resigned">Resigned</option>
+              <option value="terminated">Terminated</option>
             </select>
           </div>
           <div class="form-group">
@@ -157,6 +177,7 @@ export default {
     const authStore = useAuthStore()
     
     const users = ref([])
+    const allUsers = ref([]) // Store all users for frontend filtering
     const loading = ref(false)
     const error = ref('')
     const showAddModal = ref(false)
@@ -175,7 +196,10 @@ export default {
       email: '',
       password: '',
       role: '',
-      status: 'active'
+      status: 'active',
+      employee_number: '',
+      hire_date: '',
+      employment_status: ''
     })
     
     const fetchUsers = async () => {
@@ -183,33 +207,48 @@ export default {
       error.value = ''
       
       try {
-        const searchFilters = {}
+        // Fetch all users without filters
+        const fetchedUsers = await userService.getUsers()
+        allUsers.value = fetchedUsers
         
-        // Add search query
-        if (searchQuery.value.trim()) {
-          searchFilters.name = searchQuery.value.trim()
-        }
-        
-        // Add filters
-        if (filters.value.role) {
-          searchFilters.role = filters.value.role
-        }
-        
-        if (filters.value.status) {
-          searchFilters.status = filters.value.status
-        }
-        
-        if (filters.value.department_id) {
-          searchFilters.department_id = filters.value.department_id
-        }
-        
-        users.value = await userService.getUsers(searchFilters)
+        // Apply frontend filtering
+        applyFrontendFilters()
       } catch (err) {
         console.error('Error fetching users:', err)
         error.value = err.response?.data?.message || 'Failed to fetch users. Please try again.'
       } finally {
         loading.value = false
       }
+    }
+    
+    const applyFrontendFilters = () => {
+      let filteredUsers = [...allUsers.value]
+      
+      // Apply search filter
+      if (searchQuery.value.trim()) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.name.toLowerCase().includes(searchQuery.value.toLowerCase().trim())
+        )
+      }
+      
+      // Apply role filter
+      if (filters.value.role) {
+        filteredUsers = filteredUsers.filter(user => user.role === filters.value.role)
+      }
+      
+      // Apply status filter
+      if (filters.value.status) {
+        filteredUsers = filteredUsers.filter(user => user.status === filters.value.status)
+      }
+      
+      // Apply department filter
+      if (filters.value.department_id) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.employee?.department_id == filters.value.department_id
+        )
+      }
+      
+      users.value = filteredUsers
     }
     
     const saveUser = async () => {
@@ -244,10 +283,11 @@ export default {
       editingUser.value = user
       userForm.value = { 
         name: user.name,
-        email: user.email,
-        password: '',
         role: user.role,
-        status: user.status
+        status: user.status,
+        employee_number: user.employee?.employee_number || '',
+        hire_date: user.employee?.hire_date || '',
+        employment_status: user.employee?.employment_status || ''
       }
       showAddModal.value = true
     }
@@ -269,16 +309,35 @@ export default {
       }
     }
     
+    const reactivateUser = async (userId) => {
+      if (confirm('Are you sure you want to reactivate this user?')) {
+        loading.value = true
+        error.value = ''
+        
+        try {
+          await userService.reactivateUser(userId)
+          await fetchUsers()
+        } catch (err) {
+          error.value = 'Failed to reactivate user. Please try again.'
+          console.error('Error reactivating user:', err)
+        } finally {
+          loading.value = false
+        }
+      }
+    }
+    
     const closeModal = () => {
       showAddModal.value = false
       editingUser.value = null
-      error.value = ''
       userForm.value = {
         name: '',
         email: '',
         password: '',
         role: '',
-        status: 'active'
+        status: 'active',
+        employee_number: '',
+        hire_date: '',
+        employment_status: ''
       }
     }
     
@@ -289,7 +348,7 @@ export default {
         status: '',
         department_id: ''
       }
-      fetchUsers()
+      applyFrontendFilters()
     }
     
     onMounted(() => {
@@ -298,6 +357,7 @@ export default {
     
     return {
       users,
+      allUsers,
       loading,
       error,
       showAddModal,
@@ -306,9 +366,11 @@ export default {
       filters,
       userForm,
       fetchUsers,
+      applyFrontendFilters,
       saveUser,
       editUser,
       deleteUser,
+      reactivateUser,
       closeModal,
       clearFilters
     }
@@ -319,11 +381,15 @@ export default {
 <style scoped>
 .user-management {
   padding: 20px;
+  background: transparent;
+  min-height: 100vh;
 }
 
 h1 {
   margin-bottom: 20px;
-  color: #2c3e50;
+  color: #6c757d;
+  font-weight: 300;
+  font-size: 2rem;
 }
 
 .actions-bar {
@@ -348,16 +414,19 @@ h1 {
 
 .search-input {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 10px 15px;
+  border: 1px solid #f1f3f4;
+  border-radius: 8px;
   font-size: 14px;
-  transition: border-color 0.3s;
+  transition: all 0.3s ease;
+  background: white;
+  color: #6c757d;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #2c3e50;
+  border-color: #dee2e6;
+  box-shadow: 0 0 0 3px rgba(222, 226, 230, 0.2);
 }
 
 .filter-controls {
@@ -367,33 +436,38 @@ h1 {
 }
 
 .filter-select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 10px 15px;
+  border: 1px solid #f1f3f4;
+  border-radius: 8px;
   font-size: 14px;
   background: white;
   cursor: pointer;
-  transition: border-color 0.3s;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  color: #6c757d;
 }
 
 .filter-select:focus {
   outline: none;
-  border-color: #2c3e50;
+  border-color: #dee2e6;
+  box-shadow: 0 0 0 3px rgba(222, 226, 230, 0.2);
 }
 
 .clear-btn {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+  padding: 10px 20px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .clear-btn:hover:not(:disabled) {
-  background: #5a6268;
+  background: #e9ecef;
+  transform: translateY(-1px);
 }
 
 .clear-btn:disabled {
@@ -402,20 +476,28 @@ h1 {
 }
 
 .add-btn {
-  background: #27ae60;
-  color: white;
-  border: none;
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
   padding: 10px 20px;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   white-space: nowrap;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: #c3e6cb;
+  transform: translateY(-1px);
 }
 
 .users-table {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  border: 1px solid #f1f3f4;
 }
 
 table {
@@ -430,41 +512,100 @@ th, td {
 }
 
 th {
-  background: #f8f9fa;
-  font-weight: 600;
+  background: #fafbfc;
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 14px;
+  border-bottom: 1px solid #f1f3f4;
 }
 
 .role-badge, .status-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.role-badge.admin { background: #e74c3c; color: white; }
-.role-badge.manager { background: #f39c12; color: white; }
-.role-badge.employee { background: #3498db; color: white; }
+.role-badge.admin { 
+  background: #f8d7da; 
+  color: #721c24; 
+  border: 1px solid #f5c6cb;
+}
+.role-badge.manager { 
+  background: #fff3cd; 
+  color: #856404; 
+  border: 1px solid #ffeeba;
+}
+.role-badge.employee { 
+  background: #d1ecf1; 
+  color: #0c5460; 
+  border: 1px solid #bee5eb;
+}
 
-.status-badge.active { background: #27ae60; color: white; }
-.status-badge.inactive { background: #95a5a6; color: white; }
+.status-badge.active { 
+  background: #d4edda; 
+  color: #155724; 
+  border: 1px solid #c3e6cb;
+}
+.status-badge.inactive { 
+  background: #f8f9fa; 
+  color: #6c757d; 
+  border: 1px solid #dee2e6;
+}
 
 .edit-btn {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+  padding: 6px 12px;
+  border-radius: 6px;
   margin-right: 5px;
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.edit-btn:hover:not(:disabled) {
+  background: #bee5eb;
+  transform: translateY(-1px);
 }
 
 .delete-btn {
-  background: #e74c3c;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #f5c6cb;
+  transform: translateY(-1px);
+}
+
+.reactivate-btn {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.reactivate-btn:hover:not(:disabled) {
+  background: #c3e6cb;
+  transform: translateY(-1px);
 }
 
 .modal {
@@ -473,81 +614,118 @@ th {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(248, 249, 250, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
 }
 
 .modal-content {
   background: white;
   padding: 30px;
-  border-radius: 8px;
+  border-radius: 16px;
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  border: 1px solid #f1f3f4;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: 600;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #6c757d;
+  font-size: 14px;
 }
 
 .form-group input, .form-group select {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 12px 15px;
+  border: 1px solid #f1f3f4;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: white;
+  color: #6c757d;
+}
+
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: #dee2e6;
+  box-shadow: 0 0 0 3px rgba(222, 226, 230, 0.2);
 }
 
 .modal-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 25px;
+  justify-content: flex-end;
 }
 
 .save-btn {
-  background: #27ae60;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  padding: 12px 24px;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #c3e6cb;
+  transform: translateY(-1px);
 }
 
 .cancel-btn {
-  background: #95a5a6;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+  padding: 12px 24px;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #e9ecef;
+  transform: translateY(-1px);
 }
 
 .error-message {
-  background-color: #fee;
-  color: #c33;
-  padding: 10px;
-  border-radius: 6px;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 15px;
+  border-radius: 8px;
   margin-bottom: 20px;
   text-align: center;
+  border: 1px solid #f5c6cb;
+  font-weight: 500;
 }
 
 .loading {
   text-align: center;
-  padding: 40px;
-  color: #666;
+  padding: 60px;
+  color: #6c757d;
   font-size: 16px;
+  font-weight: 500;
 }
 
 small {
-  color: #666;
+  color: #6c757d;
   font-size: 12px;
   margin-top: 4px;
   display: block;
+  font-style: italic;
 }
 </style>

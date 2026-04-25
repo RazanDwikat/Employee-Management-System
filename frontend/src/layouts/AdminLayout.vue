@@ -21,6 +21,11 @@
             <i class="icon">Departments</i>
           </router-link>
         </li>
+        <li>
+          <router-link to="/admin/profile" class="nav-link">
+            <i class="icon">Profile</i>
+          </router-link>
+        </li>
       </ul>
     </nav>
     
@@ -66,18 +71,23 @@ export default {
 .admin-layout {
   display: flex;
   min-height: 100vh;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 50%, #f1f5f9 100%);
 }
 
 .sidebar {
   width: 250px;
-  background: #2c3e50;
+  background: #3d7d73;
   color: white;
   padding: 20px;
+  border-right: 1px solid #2e6359;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.02);
 }
 
 .sidebar-header h3 {
   margin-bottom: 30px;
   font-size: 20px;
+  font-weight: 400;
+  color: white;
 }
 
 .nav-menu {
@@ -91,45 +101,57 @@ export default {
 
 .nav-link {
   display: block;
-  padding: 10px;
+  padding: 12px 15px;
   color: white;
   text-decoration: none;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .nav-link:hover,
 .nav-link.router-link-active {
-  background: #34495e;
+  background: #2e6359;
+  color: white;
 }
 
 .main-content {
   flex: 1;
-  background: #f5f5f5;
+  background: transparent;
 }
 
 .top-bar {
-  background: white;
+  background: #3d7d73;
   padding: 15px 30px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  border-bottom: 1px solid #2e6359;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: 15px;
+  color: white;
+  font-weight: 500;
 }
 
 .logout-btn {
-  background: #e74c3c;
-  color: white;
-  border: none;
+  background: #FFE2E2;
+  color: #2c3e50;
+  border: 1px solid #F6F6F6;
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: #F6F6F6;
+  transform: translateY(-1px);
 }
 
 .content-area {

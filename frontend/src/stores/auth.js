@@ -26,6 +26,10 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
   }
 
+  const setUser = (userData) => {
+    user.value = userData
+  }
+
   const getUser = async () => {
     try {
       const userData = await authService.getUser()
@@ -43,6 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     login,
     logout,
-    getUser
+    getUser,
+    setUser
   }
 })

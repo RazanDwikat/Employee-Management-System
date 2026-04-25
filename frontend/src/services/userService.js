@@ -64,7 +64,9 @@ const userService = {
   },
 
   async updateUser(userId, userData) {
+    console.log('Updating user:', userId, 'with data:', userData)
     const response = await apiClient.put(`/users/${userId}`, userData)
+    console.log('Update response:', response.data)
     return response.data
   },
 
@@ -74,7 +76,14 @@ const userService = {
   },
 
   async updateProfile(userData) {
-    const response = await apiClient.put('/profile', userData)
+    const response = await apiClient.put('/admin/profile', userData)
+    return response.data
+  },
+
+  async reactivateUser(userId) {
+    console.log('Reactivating user:', userId)
+    const response = await apiClient.post(`/users/${userId}/reactivate`)
+    console.log('Reactivate response:', response.data)
     return response.data
   }
 }

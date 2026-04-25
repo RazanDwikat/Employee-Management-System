@@ -19,9 +19,10 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::post('/users', [UserController::class, 'store']); 
     Route::put('/users/{user}', [UserController::class, 'update']); 
     Route::delete('/users/{id}', [UserController::class, 'destroy']); 
-    Route::put('/profile', [UserController::class, 'updateProfile']); 
-    Route::post('/departments', [DepartmentController::class, 'store']);
+    Route::put('/admin/profile', [UserController::class, 'updateProfile']); 
+    Route::post('/users/{id}/reactivate', [UserController::class, 'reactivateUser']); 
     //Department Management
+    Route::post('/departments', [DepartmentController::class, 'store']);
     Route::put('/departments/{id}/assign-manager', [DepartmentController::class, 'assignManager']);
     Route::put('/departments/{id}', [DepartmentController::class, 'update']);
     Route::delete('/departments/{id}', [DepartmentController::class, 'destroy']);
