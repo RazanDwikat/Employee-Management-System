@@ -12,45 +12,40 @@
       {{ error }}
     </div>
     
-    <div v-if="loading" class="loading">
-      Loading departments...
-    </div>
-    
-    <div v-else class="departments-table">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Manager</th>
-            <th>Employees Count</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="department in departments" :key="department.id">
-            <td>{{ department.id }}</td>
-            <td>{{ department.name }}</td>
-            <td>{{ department.manager?.name || 'Not Assigned' }}</td>
-            <td>
-              <button @click="showDepartmentEmployees(department)" class="employee-count-btn">
-                {{ department.employees_count || 0 }}
-              </button>
-            </td>
-            <td>
-              <button @click="editDepartment(department)" class="edit-btn">Edit</button>
-              <button @click="showAssignManagerModal(department)" class="assign-btn">Assign Manager</button>
-              <button @click="deleteDepartment(department.id)" class="delete-btn">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- DataTable Component -->
+    <DataTable 
+      :data="departments" 
+      :columns="departmentColumns" 
+      :loading="loading"
+    >
+      <template #cell-manager="{ item }">
+        {{ item.manager?.name || 'Not Assigned' }}
+      </template>
+      
+      <template #cell-employees_count="{ item }">
+        <button @click="showDepartmentEmployees(item)" class="employee-count-btn">
+          {{ item.employees_count || 0 }}
+        </button>
+      </template>
+      
+      <template #cell-actions="{ item }">
+        <button @click="editDepartment(item)" class="edit-btn">Edit</button>
+        <button @click="showAssignManagerModal(item)" class="assign-btn">Assign Manager</button>
+        <button @click="deleteDepartment(item.id)" class="delete-btn">Delete</button>
+      </template>
+    </DataTable>
     
     <!-- Add/Edit Department Modal -->
-    <div v-if="showAddModal" class="modal">
-      <div class="modal-content">
-        <h3>{{ editingDepartment ? 'Edit Department' : 'Add New Department' }}</h3>
+    <BaseModal 
+      v-model="showAddModal"
+      :title="editingDepartment ? 'Edit Department' : 'Add New Department'"
+      :loading="loading"
+      loading-text="Saving..."
+      save-text="Save"
+      @save="saveDepartment"
+      @cancel="closeModal"
+    >
+      <template #body>
         <form @submit.prevent="saveDepartment">
           <div class="form-group">
             <label for="name">Department Name</label>
@@ -80,22 +75,21 @@
               </option>
             </select>
           </div>
-          <div class="modal-actions">
-            <button type="submit" class="save-btn" :disabled="loading">
-              {{ loading ? 'Saving...' : 'Save' }}
-            </button>
-            <button type="button" @click="closeModal" class="cancel-btn" :disabled="loading">
-              Cancel
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+      </template>
+    </BaseModal>
     
     <!-- Assign Manager Modal -->
-    <div v-if="showAssignModal" class="modal">
-      <div class="modal-content">
-        <h3>Assign Manager to {{ selectedDepartment?.name }}</h3>
+    <BaseModal 
+      v-model="showAssignModal"
+      :title="`Assign Manager to ${selectedDepartment?.name}`"
+      :loading="loading"
+      loading-text="Assigning..."
+      save-text="Assign Manager"
+      @save="assignManager"
+      @cancel="closeAssignModal"
+    >
+      <template #body>
         <form @submit.prevent="assignManager">
           <div class="form-group">
             <label>Select Manager</label>
@@ -106,22 +100,19 @@
               </option>
             </select>
           </div>
-          <div class="modal-actions">
-            <button type="submit" class="save-btn" :disabled="loading">
-              {{ loading ? 'Assigning...' : 'Assign Manager' }}
-            </button>
-            <button type="button" @click="closeAssignModal" class="cancel-btn" :disabled="loading">
-              Cancel
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+      </template>
+    </BaseModal>
     
     <!-- Department Employees Modal -->
-    <div v-if="showEmployeesModal" class="modal">
-      <div class="modal-content">
-        <h3>Employees in {{ selectedDepartment?.name }}</h3>
+    <BaseModal 
+      v-model="showEmployeesModal"
+      :title="`Employees in ${selectedDepartment?.name}`"
+      save-text="Close"
+      @save="closeEmployeesModal"
+      :show-footer="false"
+    >
+      <template #body>
         <div v-if="loadingEmployees" class="loading">
           Loading employees...
         </div>
@@ -129,48 +120,36 @@
           No employees found in this department.
         </div>
         <div v-else class="employees-list">
-          <table>
-            <thead>
-              <tr>
-                <th>Employee Number</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="employee in departmentEmployees" :key="employee.id">
-                <td>{{ employee.employee_number }}</td>
-                <td>{{ employee.name || 'N/A' }}</td>
-                <td>{{ employee.email || 'N/A' }}</td>
-                <td>{{ employee.phone || 'N/A' }}</td>
-                <td>
-                  <span :class="getStatusClass(employee.employment_status)">
-                    {{ employee.employment_status }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <DataTable 
+            :data="departmentEmployees" 
+            :columns="employeeColumns" 
+            :loading="loadingEmployees"
+          >
+            <template #cell-employment_status="{ item }">
+              <span :class="getStatusClass(item.employment_status)">
+                {{ item.employment_status }}
+              </span>
+            </template>
+          </DataTable>
         </div>
-        <div class="modal-actions">
-          <button @click="closeEmployeesModal" class="cancel-btn">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import departmentService from '../../services/departmentService'
 import userService from '../../services/userService'
+import DataTable from '../../components/common/DataTable.vue'
+import BaseModal from '../../components/common/BaseModal.vue'
 
 export default {
   name: 'DepartmentManagement',
+  components: {
+    DataTable,
+    BaseModal
+  },
   setup() {
     const departments = ref([])
     const managers = ref([])
@@ -191,6 +170,23 @@ export default {
     const assignManagerForm = ref({
       manager_id: ''
     })
+    
+    // Columns definitions
+    const departmentColumns = [
+      { key: 'id', label: 'ID' },
+      { key: 'name', label: 'Name' },
+      { key: 'manager.name', label: 'Manager' },
+      { key: 'employees_count', label: 'Employees Count' },
+      { key: 'actions', label: 'Actions' }
+    ]
+    
+    const employeeColumns = [
+      { key: 'employee_number', label: 'Employee Number' },
+      { key: 'name', label: 'Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'employment_status', label: 'Status' }
+    ]
     
     const fetchDepartments = async () => {
       loading.value = true
@@ -375,6 +371,8 @@ export default {
       loadingEmployees,
       departmentForm,
       assignManagerForm,
+      departmentColumns,
+      employeeColumns,
       saveDepartment,
       editDepartment,
       deleteDepartment,

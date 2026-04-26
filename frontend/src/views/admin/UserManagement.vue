@@ -3,50 +3,15 @@
     <h1>User Management</h1>
     
     <div class="actions-bar">
-      <div class="search-filters">
-        <div class="search-box">
-          <input 
-            v-model="searchQuery" 
-            @input="applyFrontendFilters"
-            type="text" 
-            placeholder="Search by name..."
-            class="search-input"
-            :disabled="loading"
-          />
-        </div>
-        
-        <div class="filter-controls">
-          <select 
-            v-model="filters.role" 
-            @change="applyFrontendFilters"
-            class="filter-select"
-            :disabled="loading"
-          >
-            <option value="">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="employee">Employee</option>
-          </select>
-          
-          <select 
-            v-model="filters.status" 
-            @change="applyFrontendFilters"
-            class="filter-select"
-            :disabled="loading"
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          
-          <button 
-            @click="clearFilters"
-            class="clear-btn"
-            :disabled="loading || (!searchQuery && !filters.role && !filters.status)"
-          >
-            Clear Filters
-          </button>
-        </div>
+      <div class="search-section">
+        <SearchFilter 
+          v-model:searchQuery="searchQuery"
+          :filters="filterConfig"
+          :loading="loading"
+          search-placeholder="Search by name..."
+          @filter-change="handleFilterChange"
+          @clear-filters="clearFilters"
+        />
       </div>
       
       <button @click="showAddModal = true" class="add-btn" :disabled="loading">
@@ -62,47 +27,54 @@
       Loading users...
     </div>
     
-    <div v-else class="users-table">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="user in users" :key="user.id">
-            <td>{{ user.id }}</td>
-            <td>{{ user.name }}</td>
-            <td>{{ user.email }}</td>
-            <td>
-              <span class="role-badge" :class="user.role">
-                {{ user.role }}
-              </span>
-            </td>
-            <td>
-              <span class="status-badge" :class="user.status">
-                {{ user.status }}
-              </span>
-            </td>
-            <td>
-              <button @click="editUser(user)" class="edit-btn">Edit</button>
-              <button v-if="user.status === 'inactive'" @click="reactivateUser(user.id)" class="reactivate-btn">Reactivate</button>
-              <button v-else @click="deleteUser(user.id)" class="delete-btn">Delete</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- DataTable Component -->
+    <DataTable 
+      :data="filteredUsers" 
+      :columns="userColumns" 
+      :loading="loading"
+    >
+      <template #cell-role="{ item }">
+        <span :class="getRoleClass(item.role)">
+          {{ item.role }}
+        </span>
+      </template>
+      
+      <template #cell-status="{ item }">
+        <span :class="getStatusClass(item.status)">
+          {{ item.status }}
+        </span>
+      </template>
+      
+      <template #cell-actions="{ item }">
+        <button @click="editUser(item)" class="edit-btn">Edit</button>
+        <button 
+          v-if="item.status === 'inactive'" 
+          @click="reactivateUser(item.id)" 
+          class="reactivate-btn"
+        >
+          Reactivate
+        </button>
+        <button 
+          v-else 
+          @click="deleteUser(item.id)" 
+          class="delete-btn"
+        >
+          Delete
+        </button>
+      </template>
+    </DataTable>
     
     <!-- Add/Edit User Modal -->
-    <div v-if="showAddModal" class="modal">
-      <div class="modal-content">
-        <h3>{{ editingUser ? 'Edit User' : 'Add New User' }}</h3>
+    <BaseModal 
+      v-model="showAddModal"
+      :title="editingUser ? 'Edit User' : 'Add New User'"
+      :loading="loading"
+      loading-text="Saving..."
+      save-text="Save"
+      @save="saveUser"
+      @cancel="closeModal"
+    >
+      <template #body>
         <form @submit.prevent="saveUser">
           <div class="form-group">
             <label>Name</label>
@@ -152,27 +124,27 @@
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <div class="modal-actions">
-            <button type="submit" class="save-btn" :disabled="loading">
-              {{ loading ? 'Saving...' : 'Save' }}
-            </button>
-            <button type="button" @click="closeModal" class="cancel-btn" :disabled="loading">
-              Cancel
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import userService from '../../services/userService'
+import DataTable from '../../components/common/DataTable.vue'
+import BaseModal from '../../components/common/BaseModal.vue'
+import SearchFilter from '../../components/common/SearchFilter.vue'
 
 export default {
   name: 'UserManagement',
+  components: {
+    DataTable,
+    BaseModal,
+    SearchFilter
+  },
   setup() {
     const authStore = useAuthStore()
     
@@ -201,6 +173,40 @@ export default {
       hire_date: '',
       employment_status: ''
     })
+    
+    // Columns definitions
+    const userColumns = [
+      { key: 'id', label: 'ID' },
+      { key: 'name', label: 'Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'role', label: 'Role' },
+      { key: 'status', label: 'Status' },
+      { key: 'actions', label: 'Actions' }
+    ]
+    
+    // Filter configuration
+    const filterConfig = [
+      {
+        key: 'role',
+        placeholder: 'All Roles',
+        options: [
+          { value: 'admin', label: 'Admin' },
+          { value: 'manager', label: 'Manager' },
+          { value: 'employee', label: 'Employee' }
+        ]
+      },
+      {
+        key: 'status',
+        placeholder: 'All Status',
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' }
+        ]
+      }
+    ]
+    
+    // Computed property for filtered users
+    const filteredUsers = computed(() => users.value)
     
     const fetchUsers = async () => {
       loading.value = true
@@ -249,6 +255,12 @@ export default {
       }
       
       users.value = filteredUsers
+    }
+    
+    const handleFilterChange = (filterData) => {
+      searchQuery.value = filterData.search
+      filters.value = filterData.filters
+      applyFrontendFilters()
     }
     
     const saveUser = async () => {
@@ -351,6 +363,30 @@ export default {
       applyFrontendFilters()
     }
     
+    const getRoleClass = (role) => {
+      switch (role) {
+        case 'admin':
+          return 'role-badge admin'
+        case 'manager':
+          return 'role-badge manager'
+        case 'employee':
+          return 'role-badge employee'
+        default:
+          return 'role-badge'
+      }
+    }
+    
+    const getStatusClass = (status) => {
+      switch (status) {
+        case 'active':
+          return 'status-badge active'
+        case 'inactive':
+          return 'status-badge inactive'
+        default:
+          return 'status-badge'
+      }
+    }
+    
     onMounted(() => {
       fetchUsers()
     })
@@ -358,6 +394,7 @@ export default {
     return {
       users,
       allUsers,
+      filteredUsers,
       loading,
       error,
       showAddModal,
@@ -365,14 +402,19 @@ export default {
       searchQuery,
       filters,
       userForm,
+      userColumns,
+      filterConfig,
       fetchUsers,
-      applyFrontendFilters,
       saveUser,
       editUser,
       deleteUser,
       reactivateUser,
       closeModal,
-      clearFilters
+      applyFrontendFilters,
+      handleFilterChange,
+      clearFilters,
+      getRoleClass,
+      getStatusClass
     }
   }
 }
@@ -398,82 +440,9 @@ h1 {
   align-items: center;
   margin-bottom: 20px;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
-.search-filters {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  flex: 1;
-}
-
-.search-box {
-  flex: 1;
-  max-width: 300px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 15px;
-  border: 1px solid #f1f3f4;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  background: white;
-  color: #6c757d;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #dee2e6;
-  box-shadow: 0 0 0 3px rgba(222, 226, 230, 0.2);
-}
-
-.filter-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.filter-select {
-  padding: 10px 15px;
-  border: 1px solid #f1f3f4;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 120px;
-  color: #6c757d;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: #dee2e6;
-  box-shadow: 0 0 0 3px rgba(222, 226, 230, 0.2);
-}
-
-.clear-btn {
-  background: #f8f9fa;
-  color: #6c757d;
-  border: 1px solid #dee2e6;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-.clear-btn:hover:not(:disabled) {
-  background: #e9ecef;
-  transform: translateY(-1px);
-}
-
-.clear-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 .add-btn {
   background: #d4edda;
