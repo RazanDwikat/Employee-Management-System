@@ -17,15 +17,99 @@ class DepartmentController extends Controller
         $this->service = $service;
     }
 
+    public function index()
+    {
+        
+        try {
+            $departments = $this->service->getAllDepartments();
+            
+            return response()->json([
+                'message' => 'Departments retrieved successfully',
+                'departments' => $departments
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentController::index():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to retrieve departments',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getDepartmentEmployees($id)
+    {
+        try {
+            $employees = $this->service->getDepartmentEmployees($id);
+            
+            return response()->json([
+                'message' => 'Department employees retrieved successfully',
+                'employees' => $employees
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentController::getDepartmentEmployees():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to retrieve department employees',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function getManagers()
+    {
+        try {
+          
+            $managers = $this->service->getManagers();
+
+            return response()->json([
+                'message' => 'Managers retrieved successfully',
+                'managers' => $managers
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentController::getManagers():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to retrieve managers',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
     
     public function store(StoreDepartmentRequest $request)
     {
-        $department = $this->service->createDepartment($request->validated());
+       
+        try {
+            $department = $this->service->createDepartment($request->validated());
+            
+            return response()->json([
+                'message' => 'Department created successfully',
+                'department' => $department
+            ], 201);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentController::store():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
-        return response()->json([
-            'message' => 'Department created successfully',
-            'department' => $department
-        ], 201);
+            return response()->json([
+                'message' => 'Failed to create department',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // Assign Manager

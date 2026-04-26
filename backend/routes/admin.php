@@ -22,6 +22,9 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::put('/admin/profile', [UserController::class, 'updateProfile']); 
     Route::post('/users/{id}/reactivate', [UserController::class, 'reactivateUser']); 
     //Department Management
+    Route::get('/departments', [DepartmentController::class, 'index']);
+    Route::get('/departments/{id}/employees', [DepartmentController::class, 'getDepartmentEmployees']);
+    Route::get('/managers', [DepartmentController::class, 'getManagers']);
     Route::post('/departments', [DepartmentController::class, 'store']);
     Route::put('/departments/{id}/assign-manager', [DepartmentController::class, 'assignManager']);
     Route::put('/departments/{id}', [DepartmentController::class, 'update']);
