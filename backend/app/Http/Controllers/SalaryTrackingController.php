@@ -25,7 +25,51 @@ class SalaryTrackingController extends Controller
         $this->service = $service;
     }
 
-   
+    // Get all salaries with pagination and filters
+    public function index(Request $request)
+    {
+        try {
+            $filters = $request->only(['status', 'month', 'year', 'employee_id']);
+            $perPage = $request->get('per_page', 10);
+            
+            $salaries = $this->service->getAllSalaries($filters, $perPage);
+            
+            return SalaryResource::collection($salaries);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in SalaryTrackingController::index():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to retrieve salaries',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get specific salary by ID
+    public function show($id)
+    {
+        try {
+            $salary = $this->service->getSalary($id);
+            
+            return new SalaryResource($salary);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in SalaryTrackingController::show():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to retrieve salary',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
     public function generate(GenerateSalaryRequest $request)
     {
         $result = $this->service->generateMonthlySalaries(

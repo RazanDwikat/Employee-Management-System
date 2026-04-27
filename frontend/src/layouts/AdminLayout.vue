@@ -37,6 +37,16 @@
           </router-link>
         </li>
         <li>
+          <router-link to="/admin/payroll-rules" class="nav-link">
+            <i class="icon">Payroll Rules</i>
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/admin/salary-management" class="nav-link">
+            <i class="icon">Salary Management</i>
+          </router-link>
+        </li>
+        <li>
           <router-link to="/admin/profile" class="nav-link">
             <i class="icon">Profile</i>
           </router-link>

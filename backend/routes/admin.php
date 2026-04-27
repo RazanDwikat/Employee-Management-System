@@ -29,6 +29,9 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::put('/departments/{id}/assign-manager', [DepartmentController::class, 'assignManager']);
     Route::put('/departments/{id}', [DepartmentController::class, 'update']);
     Route::delete('/departments/{id}', [DepartmentController::class, 'destroy']);
+    //Employee Management
+    Route::get('/employees', [DepartmentController::class, 'getAllEmployees']);
+    Route::get('/employees/{id}', [DepartmentController::class, 'getEmployee']);
     //Salary Management
     Route::post('/salaries', [SalaryController::class, 'store']);
     Route::post('/employees/{id}/salary', [SalaryController::class, 'update']);
@@ -54,6 +57,8 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::delete('/work-schedules/{id}', [WorkScheduleController::class, 'destroy']);
     
     // Salary Tracking
+    Route::get('/salaries', [SalaryTrackingController::class, 'index']);
+    Route::get('/salaries/{id}', [SalaryTrackingController::class, 'show']);
     Route::post('/salaries/generate', [SalaryTrackingController::class, 'generate']);
     Route::put('/salaries/{id}/status', [SalaryTrackingController::class, 'updateStatus']);
     Route::put('/salaries/status', [SalaryTrackingController::class, 'updateStatus']);

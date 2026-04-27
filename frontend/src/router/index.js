@@ -60,6 +60,16 @@ const router = createRouter({
           component: () => import('../views/admin/WorkScheduleManagement.vue')
         },
         {
+          path: 'payroll-rules',
+          name: 'PayrollRuleManagement',
+          component: () => import('../views/admin/PayrollRuleManagement.vue')
+        },
+        {
+          path: 'salary-management',
+          name: 'SalaryManagement',
+          component: () => import('../views/admin/SalaryManagement.vue')
+        },
+        {
           path: 'profile',
           name: 'AdminProfile',
           component: () => import('../views/admin/Profile.vue')

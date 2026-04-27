@@ -229,4 +229,60 @@ class DepartmentService
 
         $department->delete();
     }
+
+    /**
+     * Get all employees with user and department relationships
+     * @param array $filters - Filters to apply (employment_status, department_id)
+     * @param int $perPage - Items per page for pagination
+     * @return \Illuminate\Pagination\LengthAwarePaginator
+     */
+    public function getAllEmployees(array $filters = [], int $perPage = 100)
+    {
+        try {
+            $query = Employee::with(['user', 'department']);
+
+            // Apply filters
+            if (isset($filters['employment_status'])) {
+                $query->where('employment_status', $filters['employment_status']);
+            }
+
+            if (isset($filters['department_id'])) {
+                $query->where('department_id', $filters['department_id']);
+            }
+
+            // Order by employee number
+            $query->orderBy('employee_number', 'asc');
+
+            return $query->paginate($perPage);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentService::getAllEmployees():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get specific employee by ID with user and department relationships
+     * @param int $id - Employee ID
+     * @return Employee
+     */
+    public function getEmployee(int $id)
+    {
+        try {
+            return Employee::with(['user', 'department'])
+                           ->findOrFail($id);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentService::getEmployee():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw $e;
+        }
+    }
 }

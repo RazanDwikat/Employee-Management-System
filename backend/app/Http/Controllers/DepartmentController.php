@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Models\Employee;
 use App\Services\DepartmentService;
 use App\Http\Requests\Admin\StoreDepartmentRequest;
 use App\Http\Requests\Admin\AssignManagerRequest;
 use App\Http\Requests\Admin\UpdateDepartmentRequest;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 class DepartmentController extends Controller
 {
     protected $service;
@@ -140,5 +142,50 @@ class DepartmentController extends Controller
         $department = Department::findOrFail($id);
         $this->service->deleteDepartment($department);
         return response()->json(['message' => 'Department deleted']);
+    }
+
+    // Get all employees with user and department relationships
+    public function getAllEmployees(Request $request)
+    {
+        try {
+            $filters = $request->only(['employment_status', 'department_id']);
+            $perPage = $request->get('per_page', 100);
+            
+            $employees = $this->service->getAllEmployees($filters, $perPage);
+            
+            return response()->json($employees);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentController::getAllEmployees():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to retrieve employees',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Get specific employee by ID
+    public function getEmployee($id)
+    {
+        try {
+            $employee = $this->service->getEmployee($id);
+            
+            return response()->json($employee);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in DepartmentController::getEmployee():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Failed to retrieve employee',
+                'error' => $e->getMessage()
+            ], 404);
+        }
     }
 }

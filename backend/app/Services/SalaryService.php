@@ -301,4 +301,70 @@ class SalaryService
             ? 0
             : $checkOut->diffInMinutes($end);
     }
+
+    /**
+     * Get all salaries with pagination and filters
+     * @param array $filters - Filters to apply (status, month, year, employee_id)
+     * @param int $perPage - Items per page for pagination
+     * @return \Illuminate\Pagination\LengthAwarePaginator
+     */
+    public function getAllSalaries(array $filters = [], int $perPage = 10)
+    {
+        try {
+            $query = Salary::with(['employee.user', 'employee.department']);
+
+            // Apply filters
+            if (isset($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+
+            if (isset($filters['month'])) {
+                $query->where('month', $filters['month']);
+            }
+
+            if (isset($filters['year'])) {
+                $query->where('year', $filters['year']);
+            }
+
+            if (isset($filters['employee_id'])) {
+                $query->where('employee_id', $filters['employee_id']);
+            }
+
+            // Order by latest
+            $query->orderBy('year', 'desc')
+                  ->orderBy('month', 'desc')
+                  ->orderBy('created_at', 'desc');
+
+            return $query->paginate($perPage);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in SalaryService::getAllSalaries():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Get specific salary by ID with employee relationships
+     * @param int $id - Salary ID
+     * @return Salary
+     */
+    public function getSalary(int $id)
+    {
+        try {
+            return Salary::with(['employee.user', 'employee.department'])
+                         ->findOrFail($id);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in SalaryService::getSalary():', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            throw $e;
+        }
+    }
 }
