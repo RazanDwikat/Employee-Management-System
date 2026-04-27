@@ -22,6 +22,16 @@
           </router-link>
         </li>
         <li>
+          <router-link to="/admin/leave-types" class="nav-link">
+            <i class="icon">Leave Types</i>
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/admin/leave-requests" class="nav-link">
+            <i class="icon">Leave Requests</i>
+          </router-link>
+        </li>
+        <li>
           <router-link to="/admin/profile" class="nav-link">
             <i class="icon">Profile</i>
           </router-link>

@@ -45,6 +45,16 @@ const router = createRouter({
           component: () => import('../views/admin/DepartmentManagement.vue')
         },
         {
+          path: 'leave-types',
+          name: 'LeaveTypeManagement',
+          component: () => import('../views/admin/LeaveTypeManagement.vue')
+        },
+        {
+          path: 'leave-requests',
+          name: 'LeaveRequestsManagement',
+          component: () => import('../views/admin/LeaveRequestsManagement.vue')
+        },
+        {
           path: 'profile',
           name: 'AdminProfile',
           component: () => import('../views/admin/Profile.vue')
