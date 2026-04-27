@@ -20,13 +20,21 @@ class WorkScheduleController extends Controller
 
     public function index()
     {
-        return WorkSchedule::paginate(5);
+        $schedules = WorkSchedule::withCount(['employees' => function($query) {
+            $query->where('employment_status', 'active');
+        }])->paginate(5);
+        return $schedules;
     }
 
     
     public function show($id)
     {
-        return WorkSchedule::findOrFail($id);
+        return WorkSchedule::with(['employees' => function($query) {
+            $query->where('employment_status', 'active')
+                  ->with(['user', 'department']);
+        }])->withCount(['employees' => function($query) {
+            $query->where('employment_status', 'active');
+        }])->findOrFail($id);
     }
 
     

@@ -55,6 +55,11 @@ const router = createRouter({
           component: () => import('../views/admin/LeaveRequestsManagement.vue')
         },
         {
+          path: 'work-schedules',
+          name: 'WorkScheduleManagement',
+          component: () => import('../views/admin/WorkScheduleManagement.vue')
+        },
+        {
           path: 'profile',
           name: 'AdminProfile',
           component: () => import('../views/admin/Profile.vue')

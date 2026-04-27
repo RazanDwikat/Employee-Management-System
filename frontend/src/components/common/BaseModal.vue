@@ -23,6 +23,7 @@
       <div v-if="showFooter" class="modal-footer">
         <slot name="footer">
           <button 
+            v-if="saveText && saveText.trim()"
             @click="handleSave" 
             class="save-btn"
             :disabled="loading || saveDisabled"

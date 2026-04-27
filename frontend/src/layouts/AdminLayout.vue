@@ -32,6 +32,11 @@
           </router-link>
         </li>
         <li>
+          <router-link to="/admin/work-schedules" class="nav-link">
+            <i class="icon">Work Schedules</i>
+          </router-link>
+        </li>
+        <li>
           <router-link to="/admin/profile" class="nav-link">
             <i class="icon">Profile</i>
           </router-link>
