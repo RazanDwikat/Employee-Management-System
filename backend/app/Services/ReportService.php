@@ -74,21 +74,20 @@ class ReportService
             Carbon::parse($item->date)->format('Y-m-d')
         );
 
-        $daysInMonth = Carbon::create($filters['year'], $filters['month'])->daysInMonth;
-
         $daily = [];
 
-        for ($i = 1; $i <= $daysInMonth; $i++) {
-
-            $date = Carbon::create($filters['year'], $filters['month'], $i)->format('Y-m-d');
-            $records = $grouped[$date] ?? collect();
-
+        foreach ($grouped as $date => $records) {
             $daily[] = [
                 'date' => $date,
                 'summary' => $this->buildSummary($records),
                 'employees' => $this->mapEmployees($records),
             ];
         }
+
+        // Sort by date
+        usort($daily, function ($a, $b) {
+            return strtotime($a['date']) - strtotime($b['date']);
+        });
 
         return $daily;
     }

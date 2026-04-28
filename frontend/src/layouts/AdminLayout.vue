@@ -47,6 +47,11 @@
           </router-link>
         </li>
         <li>
+          <router-link to="/admin/reports" class="nav-link">
+            <i class="icon">Reports</i>
+          </router-link>
+        </li>
+        <li>
           <router-link to="/admin/profile" class="nav-link">
             <i class="icon">Profile</i>
           </router-link>
