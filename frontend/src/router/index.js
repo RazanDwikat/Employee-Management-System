@@ -110,6 +110,26 @@ const router = createRouter({
           path: 'dashboard',
           name: 'EmployeeDashboard',
           component: () => import('../views/employee/Dashboard.vue')
+        },
+        {
+          path: 'profile',
+          name: 'EmployeeProfile',
+          component: () => import('../views/employee/Profile.vue')
+        },
+        {
+          path: 'leaves',
+          name: 'EmployeeLeaves',
+          component: () => import('../views/employee/Leaves.vue')
+        },
+        {
+          path: 'attendance',
+          name: 'EmployeeAttendance',
+          component: () => import('../views/employee/Attendance.vue')
+        },
+        {
+          path: 'salaries',
+          name: 'EmployeeSalaries',
+          component: () => import('../views/employee/Salaries.vue')
         }
       ]
     }

@@ -15,6 +15,26 @@ class AttendanceController extends Controller
         $this->service = $service;
     }
 
+    // Get today's attendance
+    public function today()
+    {
+        $employee = auth()->user()->employee;
+
+        $attendance = $this->service->getTodayAttendance($employee);
+
+        return response()->json($attendance);
+    }
+
+    // Get attendance history
+    public function history(Request $request)
+    {
+        $employee = auth()->user()->employee;
+
+        $attendances = $this->service->getAttendanceHistory($employee, $request);
+
+        return response()->json($attendances);
+    }
+
     //  check in
     public function checkIn()
     {

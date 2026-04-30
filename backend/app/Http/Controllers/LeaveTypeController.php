@@ -22,8 +22,8 @@ class LeaveTypeController extends Controller
     
     public function index(Request $request)
     {
-        $perPage = $request->get('per_page', 3);
-        $leaveTypes = LeaveType::paginate($perPage);
+        // For employee leave types dropdown, return all without pagination
+        $leaveTypes = LeaveType::all();
         return LeaveTypeResource::collection($leaveTypes);
     }
 

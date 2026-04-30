@@ -82,6 +82,33 @@ class AttendanceService
     }
 
     
+    public function getTodayAttendance($employee)
+    {
+        $today = Carbon::today();
+        
+        return Attendance::where('employee_id', $employee->id)
+            ->whereDate('date', $today)
+            ->first();
+    }
+    
+    public function getAttendanceHistory($employee, $request)
+    {
+        $query = Attendance::where('employee_id', $employee->id)
+            ->orderBy('date', 'desc');
+            
+        // Filter by month if provided
+        if ($request->month) {
+            $query->whereMonth('date', $request->month);
+        }
+        
+        // Filter by year if provided
+        if ($request->year) {
+            $query->whereYear('date', $request->year);
+        }
+        
+        return $query->paginate($request->get('per_page', 10));
+    }
+    
     public function getDepartmentAttendance($manager, $request)
     {
         return Attendance::with('employee.user')
