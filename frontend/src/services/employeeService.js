@@ -39,10 +39,23 @@ class EmployeeService {
    */
   async updateProfile(profileData) {
     try {
+      console.log('Frontend: Sending profile update request', {
+        url: '/profile',
+        data: profileData
+      })
+      
       const response = await apiClient.put('/profile', profileData)
+      
+      console.log('Frontend: Profile update response', response.data)
+      
       return response.data
     } catch (error) {
-      console.error('Error updating profile:', error)
+      console.error('Frontend: Error updating profile:', error)
+      console.log('Frontend: Error details', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      })
       throw error
     }
   }

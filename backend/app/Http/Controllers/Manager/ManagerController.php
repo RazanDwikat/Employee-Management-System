@@ -32,17 +32,40 @@ class ManagerController extends Controller
     // assign employee to my department
     public function assignEmployee(Request $request , $id)
     {
-       
-
         $manager = auth()->user();
 
         $employee = $this->service->assignEmployee(
             $manager,
-            $request->id
+            $id  // Use employee ID from route parameter
         );
 
         return response()->json([
             'message' => 'Employee assigned to your department',
+            'employee' => $employee
+        ]);
+    }
+    
+    // get employees available for assignment
+    public function getEmployeesForAssignment()
+    {
+        $manager = auth()->user();
+
+        $employees = $this->service->getEmployeesForAssignment($manager);
+
+        return response()->json([
+            'employees' => $employees
+        ]);
+    }
+    
+    // remove employee from department
+    public function removeEmployee($id)
+    {
+        $manager = auth()->user();
+
+        $employee = $this->service->removeEmployee($manager, $id);
+
+        return response()->json([
+            'message' => 'Employee removed from your department',
             'employee' => $employee
         ]);
     }

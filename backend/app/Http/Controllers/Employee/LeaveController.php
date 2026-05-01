@@ -72,12 +72,23 @@ class LeaveController extends Controller
         $leave = $this->service->updateStatus(
             $leave,
             $user,
-            $request->action
+            $request->action,
+            $request->reason
         );
 
         return response()->json([
             'message' => 'Leave updated successfully',
             'leave' => $leave
         ]);
+    }
+
+    // Get department leaves for manager (exclude manager's own requests)
+    public function departmentLeaves(Request $request)
+    {
+        $user = auth()->user();
+
+        $leaves = $this->service->listDepartmentLeaves($user, $request);
+
+        return response()->json($leaves);
     }
 }

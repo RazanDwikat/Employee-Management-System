@@ -118,35 +118,51 @@
             <div v-if="expandedSalaryId === salary.id" class="salary-expanded">
               <div class="expanded-section">
                 <h4 class="section-title">Salary Breakdown</h4>
-                <div class="breakdown-grid">
-                  <div class="breakdown-item">
+                
+                <!-- Base Salary Summary -->
+                <div class="summary-section">
+                  <div class="summary-item">
                     <span class="label">Base Salary:</span>
                     <span class="value">{{ formatCurrency(salary.base_salary) }}</span>
                   </div>
-                  <div class="breakdown-item">
-                    <span class="label">Overtime:</span>
-                    <span class="value positive">+{{ formatCurrency(salary.overtime || 0) }}</span>
+                  <div class="summary-item">
+                    <span class="label">Total Bonus:</span>
+                    <span class="value positive">+{{ formatCurrency(salary.total_bonus || 0) }}</span>
                   </div>
-                  <div class="breakdown-item">
-                    <span class="label">Bonus:</span>
-                    <span class="value positive">+{{ formatCurrency(salary.bonus || 0) }}</span>
+                  <div class="summary-item">
+                    <span class="label">Total Deductions:</span>
+                    <span class="value negative">-{{ formatCurrency(salary.total_deductions || 0) }}</span>
                   </div>
-                  <div class="breakdown-item">
-                    <span class="label">Other Allowances:</span>
-                    <span class="value positive">+{{ formatCurrency(salary.allowances || 0) }}</span>
+                  <div class="summary-item total">
+                    <span class="label">Net Salary:</span>
+                    <span class="value">{{ formatCurrency(salary.net_salary) }}</span>
                   </div>
-                  <div class="breakdown-item">
-                    <span class="label">Tax:</span>
-                    <span class="value negative">-{{ formatCurrency(salary.tax || 0) }}</span>
+                </div>
+                
+                <!-- Detailed Breakdown -->
+                <div v-if="salary.salary_details && salary.salary_details.length > 0" class="details-section">
+                  <h5 class="details-title">Detailed Adjustments</h5>
+                  <div class="details-list">
+                    <div 
+                      v-for="detail in salary.salary_details" 
+                      :key="detail.id || `${detail.type}-${detail.date}`"
+                      class="detail-item"
+                      :class="detail.type"
+                    >
+                      <div class="detail-info">
+                        <div class="detail-type">{{ getDetailTypeLabel(detail.type) }}</div>
+                        <div class="detail-reason">{{ detail.reason }}</div>
+                        <div class="detail-date">{{ formatDate(detail.date) }}</div>
+                      </div>
+                      <div class="detail-amount" :class="getDetailTypeClass(detail.type)">
+                        {{ getDetailAmount(detail) }}
+                      </div>
+                    </div>
                   </div>
-                  <div class="breakdown-item">
-                    <span class="label">Insurance:</span>
-                    <span class="value negative">-{{ formatCurrency(salary.insurance || 0) }}</span>
-                  </div>
-                  <div class="breakdown-item">
-                    <span class="label">Other Deductions:</span>
-                    <span class="value negative">-{{ formatCurrency(salary.deductions || 0) }}</span>
-                  </div>
+                </div>
+                
+                <div v-else class="no-details">
+                  <p>No additional adjustments for this period</p>
                 </div>
               </div>
             </div>
@@ -405,6 +421,52 @@ export default {
       return classes[status] || 'text-gray-600 bg-gray-100'
     }
     
+    const getDetailTypeLabel = (type) => {
+      const labels = {
+        bonus: 'Bonus',
+        overtime: 'Overtime',
+        allowance: 'Allowance',
+        deduction: 'Deduction',
+        absence: 'Absence',
+        late: 'Late Arrival',
+        tax: 'Tax',
+        insurance: 'Insurance'
+      }
+      return labels[type] || type.charAt(0).toUpperCase() + type.slice(1)
+    }
+    
+    const getDetailTypeClass = (type) => {
+      const positiveTypes = ['bonus', 'overtime', 'allowance']
+      const negativeTypes = ['deduction', 'absence', 'late', 'tax', 'insurance']
+      
+      if (positiveTypes.includes(type)) return 'positive'
+      if (negativeTypes.includes(type)) return 'negative'
+      return 'neutral'
+    }
+    
+    const getDetailAmount = (detail) => {
+      const amount = parseFloat(detail.amount) || 0
+      const typeClass = getDetailTypeClass(detail.type)
+      
+      if (typeClass === 'positive') {
+        return `+${formatCurrency(amount)}`
+      } else if (typeClass === 'negative') {
+        return `-${formatCurrency(Math.abs(amount))}`
+      } else {
+        return formatCurrency(amount)
+      }
+    }
+    
+    const formatDate = (dateString) => {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    }
+    
     // Lifecycle
     onMounted(() => {
       loadSalaries()
@@ -427,7 +489,11 @@ export default {
       downloadPayslip,
       formatCurrency,
       getMonthName,
-      getStatusClass
+      getStatusClass,
+      getDetailTypeLabel,
+      getDetailTypeClass,
+      getDetailAmount,
+      formatDate
     }
   }
 }
@@ -717,6 +783,161 @@ export default {
   font-weight: 600;
   color: #2c3e50;
   margin: 0 0 16px 0;
+}
+
+/* Summary Section */
+.summary-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.summary-item:last-child {
+  margin-bottom: 0;
+}
+
+.summary-item.total {
+  padding-top: 8px;
+  border-top: 1px solid #e8eaed;
+  font-weight: 600;
+}
+
+.summary-item .label {
+  font-size: 14px;
+  color: #5f6368;
+}
+
+.summary-item .value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.summary-item .value.positive {
+  color: #10b981;
+}
+
+.summary-item .value.negative {
+  color: #ef4444;
+}
+
+/* Details Section */
+.details-section {
+  margin-top: 20px;
+}
+
+.details-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 12px 0;
+}
+
+.details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e8eaed;
+}
+
+.detail-item.bonus {
+  border-left: 4px solid #10b981;
+}
+
+.detail-item.overtime {
+  border-left: 4px solid #10b981;
+}
+
+.detail-item.allowance {
+  border-left: 4px solid #10b981;
+}
+
+.detail-item.deduction {
+  border-left: 4px solid #ef4444;
+}
+
+.detail-item.absence {
+  border-left: 4px solid #ef4444;
+}
+
+.detail-item.late {
+  border-left: 4px solid #f59e0b;
+}
+
+.detail-item.tax {
+  border-left: 4px solid #ef4444;
+}
+
+.detail-item.insurance {
+  border-left: 4px solid #ef4444;
+}
+
+.detail-info {
+  flex: 1;
+}
+
+.detail-type {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.detail-reason {
+  font-size: 12px;
+  color: #5f6368;
+  margin-bottom: 2px;
+}
+
+.detail-date {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.detail-amount {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.detail-amount.positive {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.detail-amount.negative {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.detail-amount.neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.no-details {
+  text-align: center;
+  padding: 20px;
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .breakdown-grid {

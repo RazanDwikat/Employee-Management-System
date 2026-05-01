@@ -111,12 +111,17 @@ class AttendanceService
     
     public function getDepartmentAttendance($manager, $request)
     {
-        return Attendance::with('employee.user')
+        $query = Attendance::with('employee.user')
             ->whereHas('employee', function ($q) use ($manager) {
-                $q->where('department_id', $manager->employee->department_id);
-            })
-            ->when($request->date, function ($q) use ($request) {
+                $q->where('department_id', $manager->employee->department_id)
+                  ->where('id', '!=', $manager->employee->id);  // Exclude manager's own attendance
+            });
+
+        return $query->when($request->date, function ($q) use ($request) {
                 $q->whereDate('date', $request->date);
+            })
+            ->when($request->status, function ($q) use ($request) {
+                $q->where('status', $request->status);
             })
             ->orderBy('date', 'desc')
             ->paginate($request->get('per_page', 10));

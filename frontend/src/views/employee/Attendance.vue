@@ -194,7 +194,7 @@
       <AppMessage
         v-if="message"
         :type="messageType"
-        :message="message"
+        :text="message"
       />
     </div>
   </div>

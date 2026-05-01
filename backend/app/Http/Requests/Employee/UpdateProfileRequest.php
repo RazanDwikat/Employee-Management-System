@@ -18,7 +18,7 @@ class UpdateProfileRequest extends FormRequest
             'password' => 'sometimes|string|min:8',
 
             'phone' => 'sometimes|string|max:20',
-            'address' => 'sometimes|string|max:255',
+            'address' => 'sometimes|nullable|string|max:255',
         ];
     }
 }

@@ -132,7 +132,7 @@
       <AppMessage
         v-if="message"
         :type="messageType"
-        :message="message"
+        :text="message"
       />
     </div>
   </div>
@@ -247,6 +247,17 @@ export default {
         if (response.user) {
           authStore.setUser(response.user)
           user.value = response.user
+          
+          // Update form with new data
+          profileForm.value = {
+            name: user.value.name || '',
+            email: user.value.email || '',
+            phone: user.value.employee?.phone || '',
+            address: user.value.employee?.address || '',
+            current_password: '',
+            password: '',
+            password_confirmation: ''
+          }
         }
         
         // Clear password fields

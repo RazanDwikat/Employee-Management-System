@@ -6,19 +6,53 @@
       </div>
       
       <ul class="nav-menu">
+       <!-- Employee Functions -->
+       <li class="nav-section">
+          <span class="nav-section-title">My Work</span>
+        </li>
         <li>
           <router-link to="/manager/dashboard" class="nav-link">
             Dashboard
           </router-link>
         </li>
         <li>
-          <router-link to="/manager/team" class="nav-link">
-            Team Management
+          <router-link to="/manager/profile" class="nav-link">
+            My Profile
           </router-link>
         </li>
         <li>
-          <router-link to="/manager/schedule" class="nav-link">
-            Schedule
+          <router-link to="/manager/attendance" class="nav-link">
+            Attendance
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/manager/leaves" class="nav-link">
+            Leave Requests
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/manager/salaries" class="nav-link">
+            My Salaries
+          </router-link>
+        </li>
+        
+        <!-- Manager Functions -->
+        <li class="nav-section">
+          <span class="nav-section-title">Team Management</span>
+        </li>
+        <li>
+          <router-link to="/manager/employees" class="nav-link">
+            Team Members
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/manager/leave-management" class="nav-link">
+            Leave Management
+          </router-link>
+        </li>
+        <li>
+          <router-link to="/manager/team-attendance" class="nav-link">
+            Team Attendance
           </router-link>
         </li>
       </ul>
@@ -49,9 +83,13 @@ export default {
     const authStore = useAuthStore()
     const router = useRouter()
     
-    const handleLogout = () => {
-      authStore.logout()
-      router.push('/login')
+    const handleLogout = async () => {
+      try {
+        await authStore.logout()
+        router.push('/login')
+      } catch (error) {
+        console.error('Logout error:', error)
+      }
     }
     
     return {
@@ -70,7 +108,7 @@ export default {
 
 .sidebar {
   width: 250px;
-  background: #27ae60;
+  background: #3d7d73;
   color: white;
   padding: 20px;
 }
@@ -85,8 +123,22 @@ export default {
   padding: 0;
 }
 
+.nav-section {
+  margin: 20px 0 10px 0;
+}
+
+.nav-section-title {
+  display: block;
+  padding: 5px 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
 .nav-menu li {
-  margin-bottom: 10px;
+  margin-bottom: 2px;
 }
 
 .nav-link {
@@ -96,11 +148,12 @@ export default {
   text-decoration: none;
   border-radius: 4px;
   transition: background-color 0.3s;
+  font-size: 14px;
 }
 
 .nav-link:hover,
 .nav-link.router-link-active {
-  background: #2ecc71;
+  background: #3d7d73;
 }
 
 .main-content {
@@ -124,7 +177,7 @@ export default {
 }
 
 .logout-btn {
-  background: #e74c3c;
+  background: #faeae9;
   color: white;
   border: none;
   padding: 8px 16px;

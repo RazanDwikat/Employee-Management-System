@@ -26,11 +26,14 @@ class ProfileController extends Controller
     public function update(UpdateProfileRequest $request)
     {
         $user = auth()->user();
-
-        $user = $this->service->updateProfile(
+        
+      
+            $user = $this->service->updateProfile(
             $user,
             $request->validated()
         );
+
+       
 
         return response()->json([
             'message' => 'Profile updated successfully',

@@ -8,13 +8,14 @@ class UpdateLeaveStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // التحقق الحقيقي بالسيرفس
+        return true; 
     }
 
     public function rules(): array
     {
         return [
-            'action' => 'required|in:approve,reject'
+            'action' => 'required|in:approve,reject',
+            'reason' => 'nullable|string|max:255'
         ];
     }
 }
