@@ -197,18 +197,28 @@ class ReportService
 
         public function attendanceReportPdf($filters)
     {
-        $data = $this->attendanceReport($filters);
+        try {
+            $data = $this->attendanceReport($filters);
 
-        $pdf = Pdf::loadView('attendance', [
-            'data'  => $data,
-            'month' => $filters['month'],
-            'year'  => $filters['year'],
-        ]);
+            $pdf = Pdf::loadView('attendance', [
+                'data'  => $data,
+                'month' => $filters['month'],
+                'year'  => $filters['year'],
+            ]);
 
-        $pdf->setPaper('A4', 'landscape');
+            $pdf->setPaper('A4', 'landscape');
 
-       
-        return $pdf->download("attendance-{$filters['month']}-{$filters['year']}.pdf");
+            $filename = "attendance-{$filters['month']}-{$filters['year']}.pdf";
+            
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            \Log::error('PDF generation error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
     }
 
     
