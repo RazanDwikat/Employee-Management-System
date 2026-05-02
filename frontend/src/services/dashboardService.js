@@ -1,54 +1,25 @@
-import axios from 'axios'
+import apiClient from './apiClient'
 
-const API_URL = '/api'
 
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-/**
- * Simple Dashboard Service
- * Uses existing APIs to get basic statistics
- */
 class DashboardService {
   
-  /**
-   * Get basic dashboard statistics
-   * @returns {Promise} Dashboard statistics
-   */
+ 
   async getDashboardStats() {
     console.log('Fetching dashboard stats...')
     
     try {
-      // Get users count
+    
       const usersResponse = await apiClient.get('/users', {
         params: { per_page: 100 }  // Get all users, not just 5
       })
-      console.log('Users API response:', usersResponse.data)
-      // Users API returns paginated data with 'data' array and 'total'
+     
       const totalUsers = usersResponse.data?.total || usersResponse.data?.data?.length || 
                         (Array.isArray(usersResponse.data) ? usersResponse.data.length : 0)
       
-      // Get departments count
+     
       const departmentsResponse = await apiClient.get('/departments')
       console.log('Departments API response:', departmentsResponse.data)
-      // Departments API returns {message, departments: [...]}
+     
       const totalDepartments = departmentsResponse.data?.departments?.length || 
                               departmentsResponse.data?.data?.length || 
                               (Array.isArray(departmentsResponse.data) ? departmentsResponse.data.length : 0)

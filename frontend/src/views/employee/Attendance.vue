@@ -321,7 +321,8 @@ export default {
         
         showMessage('Checked in successfully!', 'success')
         
-        // Refresh data
+        // Refresh data immediately
+        await loadTodayAttendance()
         await loadAttendanceHistory()
         
       } catch (error) {
@@ -341,7 +342,8 @@ export default {
         
         showMessage('Checked out successfully!', 'success')
         
-        // Refresh data
+        // Refresh data immediately
+        await loadTodayAttendance()
         await loadAttendanceHistory()
         
       } catch (error) {

@@ -59,7 +59,7 @@ export default {
 }
 
 .card-primary {
-  background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+  background: linear-gradient(135deg, #4c7e76 0%, #3d7d73 100%);
   color: white;
 }
 
@@ -69,7 +69,7 @@ export default {
 }
 
 .card-gradient {
-  background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+  background: linear-gradient(135deg, #548079 0%, #3d7d73 100%);
   color: white;
 }
 

@@ -31,7 +31,7 @@ export default {
   width: 40px;
   height: 40px;
   border: 4px solid #e8eaed;
-  border-top: 4px solid #1a73e8;
+  border-top: 4px solid #3d7d73;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;

@@ -105,7 +105,7 @@ export default {
 
 .form-input:focus {
   outline: none;
-  border-color: #1a73e8;
+  border-color: #3d7d73;
   box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
 }
 
@@ -152,7 +152,7 @@ export default {
 }
 
 .input-outlined:focus {
-  border-color: #1a73e8;
+  border-color: #3d7d73;
 }
 
 .input-filled {
@@ -161,7 +161,7 @@ export default {
 }
 
 .input-filled:focus {
-  border-color: #1a73e8;
+  border-color: #3d7d73;
   background: white;
 }
 </style>

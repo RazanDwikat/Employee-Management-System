@@ -103,7 +103,7 @@ export default {
 
 .form-select:focus {
   outline: none;
-  border-color: #1a73e8;
+  border-color: #3d7d73;
   box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
 }
 
@@ -141,7 +141,7 @@ export default {
 }
 
 .select-outlined:focus {
-  border-color: #1a73e8;
+  border-color: #3d7d73;
 }
 
 .select-filled {
@@ -150,7 +150,7 @@ export default {
 }
 
 .select-filled:focus {
-  border-color: #1a73e8;
+  border-color: #3d7d73;
   background: white;
 }
 </style>

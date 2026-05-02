@@ -20,7 +20,7 @@ Route::middleware(['auth:api', 'role:manager'])->group(function () {
     Route::get('/manager/attendance', [ManagerController::class, 'attendance']);
 
     // Work schedules for manager
-    Route::get('/work-schedules', [WorkScheduleController::class, 'index']);
+    Route::get('/manager/work-schedules', [WorkScheduleController::class, 'index']);
     Route::get('/department-leaves', [LeaveController::class, 'departmentLeaves']);
 
      // Admin or manager routes for leave approval/rejection

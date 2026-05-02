@@ -1,37 +1,6 @@
-import axios from 'axios'
-
-const API_URL = '/api'
-
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-/**
- * Reports Service
- * Handles all report-related API calls
- */
+import apiClient from './apiClient'
 class ReportService {
   
-  /**
-   * Get employee report
-   * @returns {Promise} Employee report data
-   */
   async getEmployeeReport() {
     try {
       const response = await apiClient.get('/reports/employees')
@@ -41,11 +10,6 @@ class ReportService {
       throw error
     }
   }
-  
-  /**
-   * Get department distribution report
-   * @returns {Promise} Department distribution data
-   */
   async getDepartmentReport() {
     try {
       const response = await apiClient.get('/reports/departments')
@@ -56,11 +20,7 @@ class ReportService {
     }
   }
   
-  /**
-   * Get attendance report
-   * @param {Object} filters - Attendance filters (month, year, employee_id, department_id)
-   * @returns {Promise} Attendance report data
-   */
+ 
   async getAttendanceReport(filters) {
     try {
       const response = await apiClient.get('/reports/attendance', { params: filters })
@@ -71,12 +31,7 @@ class ReportService {
     }
   }
   
-  /**
-   * Get salary insights report
-   * @param {number} month - Month (1-12)
-   * @param {number} year - Year
-   * @returns {Promise} Salary insights data
-   */
+
   async getSalaryReport(month, year) {
     try {
       const response = await apiClient.get('/reports/salaries', { 
@@ -89,12 +44,6 @@ class ReportService {
     }
   }
   
-  /**
-   * Get leave insights report
-   * @param {number} month - Month (1-12)
-   * @param {number} year - Year
-   * @returns {Promise} Leave insights data
-   */
   async getLeaveReport(month, year) {
     try {
       const response = await apiClient.get('/reports/leaves', { 
@@ -107,11 +56,7 @@ class ReportService {
     }
   }
   
-  /**
-   * Download attendance report as PDF
-   * @param {Object} filters - Attendance filters (month, year, employee_id, department_id)
-   * @returns {Promise} PDF download
-   */
+
   async downloadAttendancePdf(filters) {
     try {
       const response = await apiClient.get('/reports/attendance/pdf', { 
@@ -135,23 +80,14 @@ class ReportService {
     }
   }
   
-  /**
-   * Format currency amount
-   * @param {number} amount - Amount to format
-   * @returns {string} Formatted currency
-   */
+
   formatCurrency(amount) {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
     }).format(amount || 0)
   }
-  
-  /**
-   * Get month name
-   * @param {number} month - Month number (1-12)
-   * @returns {string} Month name
-   */
+
   getMonthName(month) {
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -160,11 +96,7 @@ class ReportService {
     return months[month - 1] || 'Unknown'
   }
   
-  /**
-   * Get attendance status color
-   * @param {string} status - Attendance status
-   * @returns {string} Color class
-   */
+
   getAttendanceStatusColor(status) {
     const colors = {
       present: 'text-green-600 bg-green-100',
@@ -173,12 +105,7 @@ class ReportService {
     }
     return colors[status] || 'text-gray-600 bg-gray-100'
   }
-  
-  /**
-   * Get leave status color
-   * @param {string} status - Leave status
-   * @returns {string} Color class
-   */
+
   getLeaveStatusColor(status) {
     const colors = {
       approved: 'text-green-600 bg-green-100',
