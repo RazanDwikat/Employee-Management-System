@@ -1,76 +1,83 @@
 <template>
   <div class="admin-dashboard">
     <h1>Admin Dashboard</h1>
-    
+
     <!-- Main Stats -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">👥</div>
         <div class="stat-content">
           <h3>Total Users</h3>
-          <p class="stat-number">{{ stats.totalUsers }}</p>
+          <p class="stat-number">{{ stats?.totalUsers }} </p>
         </div>
       </div>
+
       <div class="stat-card">
         <div class="stat-icon">🏢</div>
         <div class="stat-content">
           <h3>Total Departments</h3>
-          <p class="stat-number">{{ stats.totalDepartments }}</p>
+          <p class="stat-number">{{ stats?.totalDepartments }}</p>
         </div>
       </div>
+
       <div class="stat-card">
         <div class="stat-icon">👨‍💼</div>
         <div class="stat-content">
           <h3>Active Employees</h3>
-          <p class="stat-number">{{ stats.activeEmployees }}</p>
+          <p class="stat-number">{{ stats?.activeEmployees }}</p>
         </div>
       </div>
     </div>
-    
-    <!-- Salary Stats for Current Month -->
+
+    <!-- Salary Stats -->
     <div class="section-title">
-      <h2>{{ getMonthName(stats.month) }} {{ stats.year }} Salary Overview</h2>
+      <h2>{{ getMonthName(stats?.month) }} {{ stats?.year }} Salary Overview</h2>
     </div>
+
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon">📊</div>
         <div class="stat-content">
           <h3>Total Salaries</h3>
-          <p class="stat-number">{{ stats.currentMonthSalaries }}</p>
+          <p class="stat-number">{{ stats?.currentMonthSalaries }}</p>
         </div>
       </div>
+
       <div class="stat-card">
         <div class="stat-icon">✅</div>
         <div class="stat-content">
           <h3>Finalized</h3>
-          <p class="stat-number">{{ stats.finalizedSalaries }}</p>
+          <p class="stat-number">{{ stats?.finalizedSalaries }}</p>
         </div>
       </div>
+
       <div class="stat-card">
         <div class="stat-icon">💰</div>
         <div class="stat-content">
           <h3>Paid</h3>
-          <p class="stat-number">{{ stats.paidSalaries }}</p>
+          <p class="stat-number">{{ stats?.paidSalaries }}</p>
         </div>
       </div>
+
       <div class="stat-card">
         <div class="stat-icon">💵</div>
         <div class="stat-content">
           <h3>Total Amount</h3>
-          <p class="stat-number">{{ formatCurrency(stats.totalSalaryAmount) }}</p>
+          <p class="stat-number">{{ formatCurrency(stats?.totalSalaryAmount) }}</p>
         </div>
       </div>
     </div>
-    
+
     <!-- Quick Actions -->
     <div class="section-title">
       <h2>Quick Actions</h2>
     </div>
+
     <div class="quick-actions">
-      <router-link 
-        v-for="action in quickActions" 
+      <router-link
+        v-for="action in quickActions"
         :key="action.title"
-        :to="action.route" 
+        :to="action.route"
         class="quick-action-card"
       >
         <div class="action-icon">{{ action.icon }}</div>
@@ -81,59 +88,30 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { useDashboardStore } from '@/stores/dashboardAdmin'
+import { storeToRefs } from 'pinia'
+import { onMounted } from 'vue'
 import dashboardService from '@/services/dashboardService'
 
 export default {
-  name: 'AdminDashboard',
+  name: 'Dashboard',
+
   setup() {
-    const stats = ref({
-      totalUsers: 0,
-      totalDepartments: 0,
-      activeEmployees: 0,
-      currentMonthSalaries: 0,
-      paidSalaries: 0,
-      finalizedSalaries: 0,
-      totalSalaryAmount: 0,
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear()
-    })
-    
-    const loading = ref(false)
-    const quickActions = ref(dashboardService.getQuickActions())
-    
-    // Fetch dashboard stats
-    const fetchStats = async () => {
-      loading.value = true
-      try {
-        const data = await dashboardService.getDashboardStats()
-        stats.value = data
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error)
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Helper methods
-    const formatCurrency = (amount) => {
-      return dashboardService.formatCurrency(amount)
-    }
-    
-    const getMonthName = (month) => {
-      return dashboardService.getMonthName(month)
-    }
-    
+    const dashboardStore = useDashboardStore()
+
+    const { stats, loading } = storeToRefs(dashboardStore)
+
     onMounted(() => {
-      fetchStats()
+      dashboardStore.fetchStats()
     })
-    
+
     return {
       stats,
       loading,
-      quickActions,
-      formatCurrency,
-      getMonthName
+      quickActions: dashboardStore.getQuickActions,
+
+       getMonthName: dashboardService.getMonthName,
+      formatCurrency: dashboardService.formatCurrency
     }
   }
 }

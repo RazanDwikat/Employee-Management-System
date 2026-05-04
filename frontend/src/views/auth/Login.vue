@@ -89,33 +89,25 @@ export default {
     const error = ref('')
     
     const handleLogin = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        await authStore.login(form.value)
-        
-        // Redirect based on user role
-        const userRole = authStore.user.role
-        switch (userRole) {
-          case 'admin':
-            router.push('/admin/dashboard')
-            break
-          case 'manager':
-            router.push('/manager/dashboard')
-            break
-          case 'employee':
-            router.push('/employee/dashboard')
-            break
-          default:
-            router.push('/dashboard')
-        }
-      } catch (err) {
-        error.value = err.response?.data?.error || 'Login failed. Please try again.'
-      } finally {
-        loading.value = false
-      }
+  error.value = ''
+
+  try {
+    await authStore.login(form.value)
+
+    const role = authStore.user.role
+
+    const routes = {
+      admin: '/admin/dashboard',
+      manager: '/manager/dashboard',
+      employee: '/employee/dashboard'
     }
+
+    router.push(routes[role] || '/dashboard')
+
+  } catch (err) {
+    error.value = err.response?.data?.error || 'Login failed'
+  }
+}
     
     return {
       form,

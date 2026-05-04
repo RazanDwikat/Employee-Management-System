@@ -1,3 +1,4 @@
+
 import apiClient from './apiClient'
 
 const authService = {
@@ -12,13 +13,7 @@ const authService = {
   },
 
   async logout() {
-    try {
-      await apiClient.post('/logout')
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      localStorage.removeItem('token')
-    }
+    await apiClient.post('/logout')
   }
 }
 

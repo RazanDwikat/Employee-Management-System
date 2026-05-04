@@ -1,53 +1,63 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import authService from '../services/authService'
+import authService from '@/services/authService'
 
-export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
-  const token = ref(localStorage.getItem('token') || null)
+export const useAuthStore = defineStore('auth', {
 
-  const isAuthenticated = computed(() => !!token.value)
 
-  const login = async (credentials) => {
-    try {
-      const response = await authService.login(credentials)
-      token.value = response.token
-      user.value = response.user
-      localStorage.setItem('token', token.value)
-      return response
-    } catch (error) {
-      throw error
+  state: () => ({
+    user: null,
+    token: localStorage.getItem('token'),
+    loading: false
+  }),
+
+  
+  getters: {
+    isAuthenticated: (state) => !!state.token
+  },
+
+ 
+  actions: {
+
+    async login(credentials) {
+      this.loading = true
+      try {
+        const response = await authService.login(credentials)
+
+        this.token = response.token
+        this.user = response.user
+
+        localStorage.setItem('token', this.token)
+
+        return response
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async logout() {
+      try {
+        await authService.logout()
+      } catch (e) {
+        console.warn('Logout API failed')
+      }
+
+      this.token = null
+      this.user = null
+      localStorage.removeItem('token')
+    },
+
+    async fetchUser() {
+      if (this.user) return this.user  
+
+      try {
+        const userData = await authService.getUser()
+        this.user = userData
+        return userData
+      } catch (error) {
+        this.logout()
+        throw error
+      }
     }
-  }
 
-  const logout = () => {
-    token.value = null
-    user.value = null
-    localStorage.removeItem('token')
-  }
-
-  const setUser = (userData) => {
-    user.value = userData
-  }
-
-  const getUser = async () => {
-    try {
-      const userData = await authService.getUser()
-      user.value = userData
-      return userData
-    } catch (error) {
-      logout()
-      throw error
-    }
-  }
-
-  return {
-    user,
-    token,
-    isAuthenticated,
-    login,
-    logout,
-    getUser,
-    setUser
   }
 })
