@@ -172,7 +172,7 @@ Configure the following in your `.env` file:
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=employee_management
+DB_DATABASE=employee_management_system
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
 
