@@ -69,10 +69,8 @@ class ManagerService {
   async updateLeaveStatus(leaveId, status, reason = '') {
     try {
      
-      const action = status === 'approved' ? 'approve' : 'reject'
-      
       const response = await apiClient.put(`/leaves/${leaveId}/status`, {
-        action,
+        action: status,
         reason
       })
       return response.data

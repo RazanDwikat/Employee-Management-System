@@ -14,7 +14,7 @@ class UpdateLeaveStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action' => 'required|in:approve,reject',
+            'action' => 'required|in:approved,rejected',
             'reason' => 'nullable|string|max:255'
         ];
     }

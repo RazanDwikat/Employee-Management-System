@@ -176,11 +176,12 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import SearchFilter from '../../components/common/SearchFilter.vue'
-import leaveService from '../../services/leaveService.js'
+import { useLeaveStore } from '@/stores/leaveStore'
+import { storeToRefs } from 'pinia'
 
 export default {
   name: 'LeaveRequestsManagement',
@@ -189,24 +190,31 @@ export default {
     BaseModal,
     SearchFilter
   },
+
   setup() {
-    const leaveRequests = ref([])
-    const allLeaveRequests = ref([])
-    const loading = ref(false)
-    const error = ref('')
+    const leaveStore = useLeaveStore()
+
+    const {
+      leaveRequests,
+      allLeaveRequests,
+      loading,
+      error,
+      pendingCount,
+      approvedCount,
+      rejectedCount
+    } = storeToRefs(leaveStore)
+
     const showRejectModal = ref(false)
     const showDetailsModal = ref(false)
     const selectedRequest = ref(null)
     const rejectReason = ref('')
-    
-    // Search and filters
+
     const searchQuery = ref('')
     const filters = ref({
       status: '',
       leave_type_id: ''
     })
-    
-    // Columns definition
+
     const leaveRequestColumns = [
       { key: 'employee', label: 'Employee' },
       { key: 'leave_type', label: 'Leave Type' },
@@ -214,8 +222,7 @@ export default {
       { key: 'status', label: 'Status' },
       { key: 'actions', label: 'Actions' }
     ]
-    
-    // Filter configuration
+
     const filterConfig = [
       {
         key: 'status',
@@ -227,168 +234,79 @@ export default {
         ]
       }
     ]
-    
-    // Computed properties for statistics
-    const pendingCount = computed(() => {
-      if (!Array.isArray(allLeaveRequests.value)) return 0
-      return allLeaveRequests.value.filter(req => req.status === 'pending').length
+
+    // ======================
+    // LOAD DATA
+    // ======================
+    onMounted(() => {
+      leaveStore.fetchLeaveRequests()
     })
-    
-    const approvedCount = computed(() => {
-      if (!Array.isArray(allLeaveRequests.value)) return 0
-      return allLeaveRequests.value.filter(req => req.status === 'approved').length
-    })
-    
-    const rejectedCount = computed(() => {
-      if (!Array.isArray(allLeaveRequests.value)) return 0
-      return allLeaveRequests.value.filter(req => req.status === 'rejected').length
-    })
-    
-    // Fetch leave requests
-    const fetchLeaveRequests = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Fetching leave requests...')
-        const response = await leaveService.getLeaveRequests({ per_page: 100 })
-        console.log('Leave requests fetched:', response)
-        
-        const data = response.data || response
-        
-        // Ensure data is an array
-        allLeaveRequests.value = Array.isArray(data) ? data : []
-        
-        console.log('Processed data:', allLeaveRequests.value)
-        
-        // Apply frontend filtering
-        applyFrontendFilters()
-        
-        console.log('Leave requests assigned:', allLeaveRequests.value)
-      } catch (err) {
-        console.error('Error fetching leave requests:', err)
-        error.value = err.response?.data?.message || 'Failed to fetch leave requests. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Apply frontend filtering
-    const applyFrontendFilters = () => {
-      if (!Array.isArray(allLeaveRequests.value)) {
-        leaveRequests.value = []
-        return
-      }
-      
-      let filteredRequests = [...allLeaveRequests.value]
-      
-      // Apply search filter
-      if (searchQuery.value.trim()) {
-        filteredRequests = filteredRequests.filter(request => 
-          request.employee?.user?.name?.toLowerCase().includes(searchQuery.value.toLowerCase().trim()) ||
-          request.leave_type?.name?.toLowerCase().includes(searchQuery.value.toLowerCase().trim()) ||
-          (request.description && request.description.toLowerCase().includes(searchQuery.value.toLowerCase().trim()))
-        )
-      }
-      
-      // Apply status filter
-      if (filters.value.status) {
-        filteredRequests = filteredRequests.filter(request => 
-          request.status === filters.value.status
-        )
-      }
-      
-      leaveRequests.value = filteredRequests
-    }
-    
+
+    // ======================
+    // FILTERS
+    // ======================
     const handleFilterChange = (filterData) => {
       searchQuery.value = filterData.search
       filters.value = filterData.filters
-      applyFrontendFilters()
+
+      leaveStore.applyFilters(searchQuery.value, filters.value)
     }
-    
+
     const clearFilters = () => {
       searchQuery.value = ''
       filters.value = {
         status: '',
         leave_type_id: ''
       }
-      applyFrontendFilters()
+
+      leaveStore.applyFilters('', filters.value)
     }
-    
-    // Approve leave request
+
+    // ======================
+    // ACTIONS
+    // ======================
     const approveRequest = async (request) => {
-      if (!confirm(`Are you sure you want to approve this leave request for ${request.employee?.user?.name}?`)) {
-        return
-      }
-      
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log(`Approving leave request ${request.id}`)
-        await leaveService.updateLeaveStatus(request.id, 'approve')
-        console.log('Leave request approved successfully')
-        await fetchLeaveRequests()
-      } catch (err) {
-        console.error('Error approving leave request:', err)
-        error.value = err.response?.data?.message || 'Failed to approve leave request. Please try again.'
-      } finally {
-        loading.value = false
-      }
+      if (!confirm(`Approve request for ${request.employee?.user?.name}?`)) return
+
+      await leaveStore.approveRequest(request.id)
     }
-    
-    // Show reject modal
+
     const openRejectModal = (request) => {
       selectedRequest.value = request
       rejectReason.value = ''
       showRejectModal.value = true
     }
-    
-    // Confirm rejection
+
     const confirmReject = async () => {
-      if (!rejectReason.value.trim()) {
-        error.value = 'Please provide a reason for rejection.'
-        return
-      }
-      
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log(`Rejecting leave request ${selectedRequest.value.id}`)
-        await leaveService.updateLeaveStatus(selectedRequest.value.id, 'reject', rejectReason.value)
-        console.log('Leave request rejected successfully')
-        await fetchLeaveRequests()
-        closeRejectModal()
-      } catch (err) {
-        console.error('Error rejecting leave request:', err)
-        error.value = err.response?.data?.message || 'Failed to reject leave request. Please try again.'
-      } finally {
-        loading.value = false
-      }
+      if (!rejectReason.value.trim()) return
+
+      await leaveStore.rejectRequest(
+        selectedRequest.value.id,
+        rejectReason.value
+      )
+
+      closeRejectModal()
     }
-    
-    // Close reject modal
+
     const closeRejectModal = () => {
       showRejectModal.value = false
       selectedRequest.value = null
       rejectReason.value = ''
     }
-    
-    // View request details
+
     const viewDetails = (request) => {
       selectedRequest.value = request
       showDetailsModal.value = true
     }
-    
-    // Close details modal
+
     const closeDetailsModal = () => {
       showDetailsModal.value = false
       selectedRequest.value = null
     }
-    
-    // Format date
+
+    // ======================
+    // HELPERS
+    // ======================
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
       return new Date(dateString).toLocaleDateString('en-US', {
@@ -397,18 +315,15 @@ export default {
         day: 'numeric'
       })
     }
-    
-    // Calculate duration
+
     const calculateDuration = (startDate, endDate) => {
       if (!startDate || !endDate) return 0
       const start = new Date(startDate)
       const end = new Date(endDate)
-      const diffTime = Math.abs(end - start)
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
-      return diffDays
+      const diff = Math.abs(end - start)
+      return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
     }
-    
-    // Get status CSS class
+
     const getStatusClass = (status) => {
       switch (status) {
         case 'pending':
@@ -421,38 +336,39 @@ export default {
           return 'status-badge'
       }
     }
-    
-    // Fetch data on component mount
-    onMounted(() => {
-      fetchLeaveRequests()
-    })
-    
+
     return {
       leaveRequests,
       allLeaveRequests,
       loading,
       error,
+
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+
       showRejectModal,
       showDetailsModal,
       selectedRequest,
       rejectReason,
+
       searchQuery,
       filters,
+
       leaveRequestColumns,
       filterConfig,
-      pendingCount,
-      approvedCount,
-      rejectedCount,
-      fetchLeaveRequests,
-      applyFrontendFilters,
+
       handleFilterChange,
       clearFilters,
+
       approveRequest,
       openRejectModal,
       confirmReject,
       closeRejectModal,
+
       viewDetails,
       closeDetailsModal,
+
       formatDate,
       calculateDuration,
       getStatusClass

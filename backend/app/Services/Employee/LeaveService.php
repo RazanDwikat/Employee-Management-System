@@ -67,7 +67,7 @@ class LeaveService
         }
 
         $updateData = [
-            'status' => $action === 'approve' ? 'approved' : 'rejected',
+            'status' => $action,
             'approved_by' => $user->id,
             'approved_at' => now()
         ];

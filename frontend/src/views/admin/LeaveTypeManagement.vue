@@ -128,7 +128,8 @@ import { ref, onMounted, computed } from 'vue'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import SearchFilter from '../../components/common/SearchFilter.vue'
-import leaveService from '../../services/leaveService.js'
+import { useLeaveStore } from '@/stores/leaveStore'
+import { storeToRefs } from 'pinia'
 
 export default {
   name: 'LeaveTypeManagement',
@@ -138,29 +139,30 @@ export default {
     SearchFilter
   },
   setup() {
-    const leaveTypes = ref([])
-    const allLeaveTypes = ref([]) // Store all leave types for frontend filtering
-    const loading = ref(false)
-    const error = ref('')
+
+    const leaveStore = useLeaveStore()
+    const { leaveTypes, loading, error } = storeToRefs(leaveStore)
+
+    const allLeaveTypes = ref([])
     const showAddModal = ref(false)
     const editingLeaveType = ref(null)
     const validationErrors = ref({})
-    
-    // Search and filters
+
+    // Search & Filters
     const searchQuery = ref('')
     const filters = ref({
       is_paid: ''
     })
-    
-    // Form data
+
+    // Form
     const leaveTypeForm = ref({
       name: '',
       max_days: '',
       is_paid: true,
       description: ''
     })
-    
-    // Columns definition
+
+    // Columns
     const leaveTypeColumns = [
       { key: 'id', label: 'ID' },
       { key: 'name', label: 'Leave Type' },
@@ -169,8 +171,7 @@ export default {
       { key: 'description', label: 'Description' },
       { key: 'actions', label: 'Actions' }
     ]
-    
-    // Filter configuration
+
     const filterConfig = [
       {
         key: 'is_paid',
@@ -181,170 +182,100 @@ export default {
         ]
       }
     ]
-    
-    // Fetch leave types
+
+    // 🔥 Fetch
     const fetchLeaveTypes = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Fetching leave types...')
-        const response = await leaveService.getLeaveTypes({ per_page: 50 })
-        console.log('Leave types fetched:', response)
-        
-        // Handle paginated response
-        const data = response.data || response
-        allLeaveTypes.value = data
-        
-        // Apply frontend filtering
-        applyFrontendFilters()
-        
-        console.log('Leave types assigned:', allLeaveTypes.value)
-      } catch (err) {
-        console.error('Error fetching leave types:', err)
-        error.value = err.response?.data?.message || 'Failed to fetch leave types. Please try again.'
-      } finally {
-        loading.value = false
-      }
+      await leaveStore.fetchLeaveTypes()
+      allLeaveTypes.value = leaveTypes.value
+      applyFrontendFilters()
     }
-    
-    // Apply frontend filtering
-    const applyFrontendFilters = () => {
-      let filteredTypes = [...allLeaveTypes.value]
-      
-      console.log('Filtering data:', {
-        allData: allLeaveTypes.value,
-        searchQuery: searchQuery.value,
-        filters: filters.value
-      })
-      
-      // Apply search filter
+
+    // 🔍 Filtering
+    const filteredLeaveTypes = computed(() => {
+      let data = [...allLeaveTypes.value]
+
       if (searchQuery.value.trim()) {
-        filteredTypes = filteredTypes.filter(type => 
-          type.name.toLowerCase().includes(searchQuery.value.toLowerCase().trim()) ||
-          (type.description && type.description.toLowerCase().includes(searchQuery.value.toLowerCase().trim()))
+        data = data.filter(type =>
+          type.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+          (type.description || '').toLowerCase().includes(searchQuery.value.toLowerCase())
         )
-        console.log('After search filter:', filteredTypes)
       }
-      
-      // Apply paid/unpaid filter
+
       if (filters.value.is_paid) {
         const isPaid = filters.value.is_paid === 'true'
-        console.log('Filtering by is_paid:', { filterValue: filters.value.is_paid, isPaid })
-        filteredTypes = filteredTypes.filter(type => {
-          // Handle both integer (1/0) and boolean (true/false) from API
-          const typeIsPaid = type.is_paid === 1 || type.is_paid === true
-          const matches = typeIsPaid === isPaid
-          console.log('Checking type:', { name: type.name, is_paid: type.is_paid, typeIsPaid, matches })
-          return matches
+        data = data.filter(type => {
+          const val = type.is_paid === 1 || type.is_paid === true
+          return val === isPaid
         })
-        console.log('After paid/unpaid filter:', filteredTypes)
       }
-      
-      leaveTypes.value = filteredTypes
-      console.log('Final filtered types:', leaveTypes.value)
+
+      return data
+    })
+
+    const applyFrontendFilters = () => {
+      // مش ضروري بعد ما استخدمنا computed
     }
-    
+
     const handleFilterChange = (filterData) => {
-      console.log('Filter change received:', filterData)
       searchQuery.value = filterData.search
       filters.value = filterData.filters
-      console.log('Updated filters:', { searchQuery: searchQuery.value, filters: filters.value })
-      applyFrontendFilters()
     }
-    
+
     const clearFilters = () => {
       searchQuery.value = ''
-      filters.value = {
-        is_paid: ''
-      }
-      applyFrontendFilters()
+      filters.value = { is_paid: '' }
     }
-    
-    // Save leave type (create or update)
+
+    // 💾 Save
     const saveLeaveType = async () => {
-      loading.value = true
-      error.value = ''
       validationErrors.value = {}
-      
+
       try {
-        // Convert max_days to number and prepare data
         const formData = {
           name: leaveTypeForm.value.name.trim(),
           max_days: parseInt(leaveTypeForm.value.max_days),
           is_paid: leaveTypeForm.value.is_paid,
           description: leaveTypeForm.value.description?.trim() || ''
         }
-        
-        console.log('Saving leave type:', formData)
-        
+
         if (editingLeaveType.value) {
-          // Update existing leave type
-          console.log('Updating leave type ID:', editingLeaveType.value.id)
-          const response = await leaveService.updateLeaveType(editingLeaveType.value.id, formData)
-          console.log('Leave type updated successfully:', response)
+          await leaveStore.updateLeaveType(editingLeaveType.value.id, formData)
         } else {
-          // Create new leave type
-          console.log('Creating new leave type')
-          const response = await leaveService.createLeaveType(formData)
-          console.log('Leave type created successfully:', response)
+          await leaveStore.createLeaveType(formData)
         }
-        
+
         await fetchLeaveTypes()
         closeModal()
+
       } catch (err) {
-        console.error('Error saving leave type:', err)
-        
         if (err.response?.status === 422) {
-          // Validation errors
           validationErrors.value = err.response.data.errors || {}
-          error.value = 'Please fix the validation errors below.'
-        } else {
-          error.value = err.response?.data?.message || 'Failed to save leave type. Please try again.'
         }
-      } finally {
-        loading.value = false
       }
     }
-    
-    // Edit leave type
-    const editLeaveType = (leaveType) => {
-      console.log('Editing leave type:', leaveType)
-      editingLeaveType.value = leaveType
+
+    // ✏️ Edit
+    const editLeaveType = (item) => {
+      editingLeaveType.value = item
       leaveTypeForm.value = {
-        name: leaveType.name,
-        max_days: leaveType.max_days,
-        is_paid: leaveType.is_paid,
-        description: leaveType.description || ''
+        name: item.name,
+        max_days: item.max_days,
+        is_paid: item.is_paid,
+        description: item.description || ''
       }
       showAddModal.value = true
     }
-    
-    // Delete leave type
+
+    // 🗑️ Delete
     const deleteLeaveType = async (id) => {
-      if (confirm('Are you sure you want to delete this leave type? This action cannot be undone.')) {
-        loading.value = true
-        error.value = ''
-        
-        try {
-          console.log(`Deleting leave type ${id}`)
-          await leaveService.deleteLeaveType(id)
-          console.log('Leave type deleted successfully')
-          await fetchLeaveTypes()
-        } catch (err) {
-          console.error('Error deleting leave type:', err)
-          error.value = err.response?.data?.message || 'Failed to delete leave type. Please try again.'
-        } finally {
-          loading.value = false
-        }
-      }
+      if (!confirm('Are you sure?')) return
+      await leaveStore.deleteLeaveType(id)
+      await fetchLeaveTypes()
     }
-    
-    // Close modal
+
     const closeModal = () => {
       showAddModal.value = false
       editingLeaveType.value = null
-      validationErrors.value = {}
       leaveTypeForm.value = {
         name: '',
         max_days: '',
@@ -352,20 +283,15 @@ export default {
         description: ''
       }
     }
-    
-    // Get CSS class for paid/unpaid status
+
     const getPaidClass = (isPaid) => {
       return isPaid ? 'status-badge paid' : 'status-badge unpaid'
     }
-    
-    // Fetch data on component mount
-    onMounted(() => {
-      fetchLeaveTypes()
-    })
-    
+
+    onMounted(fetchLeaveTypes)
+
     return {
-      leaveTypes,
-      allLeaveTypes,
+      leaveTypes: filteredLeaveTypes,
       loading,
       error,
       showAddModal,
@@ -376,12 +302,10 @@ export default {
       leaveTypeForm,
       leaveTypeColumns,
       filterConfig,
-      fetchLeaveTypes,
       saveLeaveType,
       editLeaveType,
       deleteLeaveType,
       closeModal,
-      applyFrontendFilters,
       handleFilterChange,
       clearFilters,
       getPaidClass

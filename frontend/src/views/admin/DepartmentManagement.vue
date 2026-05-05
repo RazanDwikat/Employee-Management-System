@@ -139,10 +139,10 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import departmentService from '../../services/departmentService'
-import userService from '../../services/userService'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
+import { useDepartmentStore } from '@/stores/department'
+import { storeToRefs } from 'pinia'
 
 export default {
   name: 'DepartmentManagement',
@@ -151,22 +151,31 @@ export default {
     BaseModal
   },
   setup() {
-    const departments = ref([])
-    const managers = ref([])
-    const loading = ref(false)
-    const error = ref('')
+
+    const departmentStore = useDepartmentStore()
+
+  const {
+    departments,
+    managers,
+    departmentEmployees,
+    loading,
+    loadingEmployees,
+    error
+  } = storeToRefs(departmentStore)
+
     const showAddModal = ref(false)
     const showAssignModal = ref(false)
     const showEmployeesModal = ref(false)
     const editingDepartment = ref(null)
     const selectedDepartment = ref(null)
-    const departmentEmployees = ref([])
-    const loadingEmployees = ref(false)
-    const departmentForm = ref({
-      name: '',
-      description: '',
-      manager_id: ''
-    })
+
+  const departmentForm = ref({
+    name: '',
+    description: '',
+    manager_id: ''
+  })
+
+
     const assignManagerForm = ref({
       manager_id: ''
     })
@@ -221,33 +230,18 @@ export default {
     }
     
     const saveDepartment = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Saving department...')
-        console.log('Department form data:', departmentForm.value)
-        console.log('Is editing:', !!editingDepartment.value)
-        
-        if (editingDepartment.value) {
-          console.log('Updating existing department:', editingDepartment.value.id)
-          await departmentService.updateDepartment(editingDepartment.value.id, departmentForm.value)
-        } else {
-          console.log('Creating new department')
-          await departmentService.createDepartment(departmentForm.value)
-        }
-        
-        console.log('Department saved successfully!')
-        await fetchDepartments()
-        closeModal()
-      } catch (err) {
-        console.error('Error saving department:', err)
-        console.error('Error response:', err.response)
-        error.value = err.response?.data?.message || 'Failed to save department. Please try again.'
-      } finally {
-        loading.value = false
-      }
+    if (editingDepartment.value) {
+      await departmentStore.updateDepartment(
+        editingDepartment.value.id,
+        departmentForm.value
+      )
+    } else {
+      await departmentStore.createDepartment(departmentForm.value)
     }
+
+    closeModal()
+  }
+
     
     const editDepartment = (department) => {
       editingDepartment.value = department
@@ -259,21 +253,10 @@ export default {
       showAddModal.value = true
     }
     
-    const deleteDepartment = async (departmentId) => {
-      if (confirm('Are you sure you want to delete this department?')) {
-        loading.value = true
-        error.value = ''
-        
-        try {
-          await departmentService.deleteDepartment(departmentId)
-          await fetchDepartments()
-        } catch (err) {
-          error.value = 'Failed to delete department. Please try again.'
-          console.error('Error deleting department:', err)
-        } finally {
-          loading.value = false
-        }
-      }
+    const deleteDepartment = async (id) => {
+    if (confirm('Are you sure?')) {
+      await departmentStore.deleteDepartment(id)
+    }
     }
     
     const closeModal = () => {
@@ -295,20 +278,12 @@ export default {
     }
     
     const assignManager = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        await departmentService.assignManager(selectedDepartment.value.id, assignManagerForm.value.manager_id)
-        await fetchDepartments()
-        closeAssignModal()
-      } catch (err) {
-        error.value = err.response?.data?.message || 'Failed to assign manager. Please try again.'
-        console.error('Error assigning manager:', err)
-      } finally {
-        loading.value = false
-      }
-    }
+    await departmentStore.assignManager(
+      selectedDepartment.value.id,
+      assignManagerForm.value.manager_id
+    )
+    closeAssignModal()
+  }
     
     const closeAssignModal = () => {
       showAssignModal.value = false
@@ -319,21 +294,10 @@ export default {
     }
     
     const showDepartmentEmployees = async (department) => {
-      selectedDepartment.value = department
-      showEmployeesModal.value = true
-      loadingEmployees.value = true
-      
-      try {
-        const response = await departmentService.getDepartmentEmployees(department.id)
-        departmentEmployees.value = response.employees || response
-        console.log('Department employees:', departmentEmployees.value)
-      } catch (err) {
-        console.error('Error fetching department employees:', err)
-        departmentEmployees.value = []
-      } finally {
-        loadingEmployees.value = false
-      }
-    }
+    selectedDepartment.value = department
+    showEmployeesModal.value = true
+    await departmentStore.fetchDepartmentEmployees(department.id)
+  }
     
     const closeEmployeesModal = () => {
       showEmployeesModal.value = false
@@ -352,10 +316,10 @@ export default {
       }
     }
     
-    onMounted(() => {
-      fetchDepartments()
-      fetchManagers()
-    })
+  onMounted(() => {
+    departmentStore.fetchDepartments()
+    departmentStore.fetchManagers()
+  })
     
     return {
       departments,

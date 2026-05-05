@@ -55,7 +55,7 @@ export default {
 
   async updateLeaveStatus(id, action, reason = '') {
     console.log(`Updating leave ${id} status to: ${action}`)
-    const response = await apiClient.put(`/leaves/${id}/status`, {
+    const response = await apiClient.put(`/admin/leaves/${id}/status`, {
       action,
       reason
     })

@@ -2,10 +2,7 @@ import apiClient from './apiClient'
 
 const departmentService = {
   async getDepartments() {
-    console.log('Making API call to /departments')
     const response = await apiClient.get('/departments')
-    console.log('API response:', response)
-    console.log('Response data:', response.data)
     return response.data
   },
 
@@ -15,10 +12,8 @@ const departmentService = {
   },
 
   async createDepartment(departmentData) {
-    console.log('Creating department with data:', departmentData)
+   
     const response = await apiClient.post('/departments', departmentData)
-    console.log('Create department response:', response)
-    console.log('Response data:', response.data)
     return response.data
   },
 
@@ -39,17 +34,14 @@ const departmentService = {
     return response.data
   },
 
-  async getDepartmentEmployees(departmentId) {
-    console.log(`Fetching employees for department ${departmentId}`)
+  async getDepartmentEmployees(departmentId) {console.log(`Fetching employees for department ${departmentId}`)
     const response = await apiClient.get(`/departments/${departmentId}/employees`)
-    console.log('Department employees response:', response)
     return response.data
   },
 
   async getManagers() {
-    console.log('Fetching managers...')
+   
     const response = await apiClient.get('/managers')
-    console.log('Managers response:', response)
     return response.data
   }
 }

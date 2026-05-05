@@ -41,7 +41,8 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
     Route::post('/leave-types', [LeaveTypeController::class, 'store']);
     Route::put('/leave-types/{id}', [LeaveTypeController::class, 'update']);
     Route::delete('/leave-types/{id}', [LeaveTypeController::class, 'destroy']);
-    Route::put('/leaves/{id}/status', [LeaveController::class, 'updateStatus']);
+    Route::put('/admin/leaves/{id}/status', [LeaveController::class, 'updateStatus']);
+    
     // Payroll Rule Management
     Route::get('/payroll-rules', [PayrollRuleController::class, 'index']);
     Route::get('/payroll-rules/{id}', [PayrollRuleController::class, 'show']);
