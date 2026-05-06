@@ -14,7 +14,7 @@
         />
       </div>
       
-      <button @click="showAddModal = true" class="add-btn" :disabled="loading">
+      <button @click="openAddModal" class="add-btn" :disabled="loading">
         Add New Schedule
       </button>
     </div>
@@ -75,7 +75,8 @@
     
     <!-- Add/Edit Modal -->
     <BaseModal 
-      v-model="showAddModal"
+      :model-value="showAddModal"
+      @update:model-value="closeAddModal"
       :title="editingSchedule ? 'Edit Work Schedule' : 'Add New Work Schedule'"
       :loading="loading"
       loading-text="Saving..."
@@ -151,7 +152,8 @@
     
     <!-- View Details Modal -->
     <BaseModal 
-      v-model="showDetailsModal"
+      :model-value="showDetailsModal"
+      @update:model-value="closeDetailsModal"
       :title="'Work Schedule Details'"
       :loading="false"
       save-text=""
@@ -193,11 +195,11 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { onMounted, computed } from 'vue'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import SearchFilter from '../../components/common/SearchFilter.vue'
-import workScheduleService from '../../services/workScheduleService.js'
+import { useWorkScheduleStore } from '@/stores/workScheduleStore'
 
 export default {
   name: 'WorkScheduleManagement',
@@ -207,307 +209,52 @@ export default {
     SearchFilter
   },
   setup() {
-    const workSchedules = ref([])
-    const allWorkSchedules = ref([])
-    const loading = ref(false)
-    const error = ref('')
-    const showAddModal = ref(false)
-    const showDetailsModal = ref(false)
-    const editingSchedule = ref(null)
-    const selectedSchedule = ref(null)
-    const validationErrors = ref({})
+    const workScheduleStore = useWorkScheduleStore()
     
-    // Search and filters
-    const searchQuery = ref('')
-    const filters = ref({
-      has_employees: ''
-    })
-    
-    // Form data
-    const scheduleForm = ref({
-      name: '',
-      start_time: '',
-      end_time: '',
-      late_grace_minutes: ''
-    })
-    
-    // Columns definition
-    const scheduleColumns = [
-      { key: 'name', label: 'Schedule Name' },
-      { key: 'start_time', label: 'Start Time' },
-      { key: 'end_time', label: 'End Time' },
-      { key: 'late_grace_minutes', label: 'Grace Period' },
-      { key: 'employees_count', label: 'Employees' },
-      { key: 'actions', label: 'Actions' }
-    ]
-    
-    // Filter configuration
-    const filterConfig = [
-      {
-        key: 'has_employees',
-        placeholder: 'All Schedules',
-        options: [
-          { value: 'has', label: 'Has Employees' },
-          { value: 'none', label: 'No Employees' }
-        ]
-      }
-    ]
-    
-    // Fetch work schedules
-    const fetchWorkSchedules = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Fetching work schedules...')
-        const response = await workScheduleService.getWorkSchedules({ per_page: 50 })
-        console.log('Work schedules fetched:', response)
-        
-        const data = response.data || response
-        
-        // Ensure data is an array
-        allWorkSchedules.value = Array.isArray(data) ? data : []
-        
-        console.log('Processed data:', allWorkSchedules.value)
-        
-        // Apply frontend filtering
-        applyFrontendFilters()
-        
-        console.log('Work schedules assigned:', allWorkSchedules.value)
-      } catch (err) {
-        console.error('Error fetching work schedules:', err)
-        error.value = err.response?.data?.message || 'Failed to fetch work schedules. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Apply frontend filtering
-    const applyFrontendFilters = () => {
-      if (!Array.isArray(allWorkSchedules.value)) {
-        workSchedules.value = []
-        return
-      }
-      
-      let filteredSchedules = [...allWorkSchedules.value]
-      
-      // Apply search filter
-      if (searchQuery.value.trim()) {
-        filteredSchedules = filteredSchedules.filter(schedule => 
-          schedule.name.toLowerCase().includes(searchQuery.value.toLowerCase().trim())
-        )
-      }
-      
-      // Apply employees filter
-      if (filters.value.has_employees) {
-        if (filters.value.has_employees === 'has') {
-          filteredSchedules = filteredSchedules.filter(schedule => 
-            schedule.employees_count > 0
-          )
-        } else if (filters.value.has_employees === 'none') {
-          filteredSchedules = filteredSchedules.filter(schedule => 
-            !schedule.employees_count || schedule.employees_count === 0
-          )
-        }
-      }
-      
-      workSchedules.value = filteredSchedules
-    }
-    
-    const handleFilterChange = (filterData) => {
-      searchQuery.value = filterData.search
-      filters.value = filterData.filters
-      applyFrontendFilters()
-    }
-    
-    const clearFilters = () => {
-      searchQuery.value = ''
-      filters.value = {
-        has_employees: ''
-      }
-      applyFrontendFilters()
-    }
-    
-    // Save work schedule (create or update)
-    const saveSchedule = async () => {
-      loading.value = true
-      error.value = ''
-      validationErrors.value = {}
-      
-      try {
-        // Prepare form data
-        const formData = {
-          name: scheduleForm.value.name.trim(),
-          start_time: scheduleForm.value.start_time ? scheduleForm.value.start_time.substring(0, 5) : '',
-          end_time: scheduleForm.value.end_time ? scheduleForm.value.end_time.substring(0, 5) : '',
-          late_grace_minutes: scheduleForm.value.late_grace_minutes || null
-        }
-        
-        console.log('Saving work schedule:', formData)
-        console.log('Editing schedule ID:', editingSchedule.value?.id)
-        console.log('Form values:', scheduleForm.value)
-        
-        if (editingSchedule.value) {
-          // Update existing schedule
-          console.log('Updating work schedule ID:', editingSchedule.value.id)
-          const response = await workScheduleService.updateWorkSchedule(editingSchedule.value.id, formData)
-          console.log('Work schedule updated successfully:', response)
-        } else {
-          // Create new schedule
-          console.log('Creating new work schedule')
-          const response = await workScheduleService.createWorkSchedule(formData)
-          console.log('Work schedule created successfully:', response)
-        }
-        
-        await fetchWorkSchedules()
-        closeModal()
-      } catch (err) {
-        console.error('Error saving work schedule:', err)
-        console.error('Error response:', err.response?.data)
-        console.error('Error status:', err.response?.status)
-        
-        if (err.response?.status === 422) {
-          // Validation errors
-          validationErrors.value = err.response.data.errors || {}
-          console.log('Validation errors:', validationErrors.value)
-          error.value = 'Please fix the validation errors below.'
-        } else {
-          error.value = err.response?.data?.message || 'Failed to save work schedule. Please try again.'
-        }
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Edit schedule
-    const editSchedule = (schedule) => {
-      console.log('Editing schedule:', schedule)
-      editingSchedule.value = schedule
-      scheduleForm.value = {
-        name: schedule.name,
-        start_time: schedule.start_time ? schedule.start_time.substring(0, 5) : '',
-        end_time: schedule.end_time ? schedule.end_time.substring(0, 5) : '',
-        late_grace_minutes: schedule.late_grace_minutes || ''
-      }
-      console.log('Form populated with:', scheduleForm.value)
-      showAddModal.value = true
-    }
-    
-    // View schedule details
-    const viewSchedule = async (schedule) => {
-      try {
-        console.log('Fetching schedule details for ID:', schedule.id)
-        const response = await workScheduleService.getWorkSchedule(schedule.id)
-        console.log('Schedule details fetched:', response)
-        selectedSchedule.value = response.data || response
-        showDetailsModal.value = true
-      } catch (err) {
-        console.error('Error fetching schedule details:', err)
-        // Fallback to table data if API fails
-        selectedSchedule.value = schedule
-        showDetailsModal.value = true
-      }
-    }
-    
-    // Delete schedule
-    const deleteSchedule = async (schedule) => {
-      if (!confirm(`Are you sure you want to delete "${schedule.name}"? This action cannot be undone.`)) {
-        return
-      }
-      
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log(`Deleting work schedule ${schedule.id}`)
-        await workScheduleService.deleteWorkSchedule(schedule.id)
-        console.log('Work schedule deleted successfully')
-        await fetchWorkSchedules()
-      } catch (err) {
-        console.error('Error deleting work schedule:', err)
-        error.value = err.response?.data?.message || 'Failed to delete work schedule. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Close modal
-    const closeModal = () => {
-      showAddModal.value = false
-      editingSchedule.value = null
-      scheduleForm.value = {
-        name: '',
-        start_time: '',
-        end_time: '',
-        late_grace_minutes: ''
-      }
-      validationErrors.value = {}
-    }
-    
-    // Close details modal
-    const closeDetailsModal = () => {
-      showDetailsModal.value = false
-      selectedSchedule.value = null
-    }
-    
-    // Format time
-    const formatTime = (timeString) => {
-      if (!timeString) return 'N/A'
-      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      })
-    }
-    
-    // Calculate working hours
-    const calculateWorkingHours = (startTime, endTime) => {
-      if (!startTime || !endTime) return 0
-      
-      const start = new Date(`2000-01-01T${startTime}`)
-      const end = new Date(`2000-01-01T${endTime}`)
-      
-      let diff = end - start
-      if (diff < 0) {
-        // Handle overnight schedules
-        diff = (end.getTime() + 24 * 60 * 60 * 1000) - start.getTime()
-      }
-      
-      return (diff / (1000 * 60 * 60)).toFixed(1)
-    }
-    
-    // Fetch data on component mount
     onMounted(() => {
-      fetchWorkSchedules()
+      workScheduleStore.fetchWorkSchedules()
     })
     
     return {
-      workSchedules,
-      allWorkSchedules,
-      loading,
-      error,
-      showAddModal,
-      showDetailsModal,
-      editingSchedule,
-      selectedSchedule,
-      validationErrors,
-      searchQuery,
-      filters,
-      scheduleForm,
-      scheduleColumns,
-      filterConfig,
-      fetchWorkSchedules,
-      applyFrontendFilters,
-      handleFilterChange,
-      clearFilters,
-      saveSchedule,
-      editSchedule,
-      viewSchedule,
-      deleteSchedule,
-      closeModal,
-      closeDetailsModal,
-      formatTime,
-      calculateWorkingHours
+      // Store state as computed properties for reactivity
+      workSchedules: computed(() => workScheduleStore.workSchedules),
+      allWorkSchedules: computed(() => workScheduleStore.allWorkSchedules),
+      loading: computed(() => workScheduleStore.loading),
+      error: computed(() => workScheduleStore.error),
+      showAddModal: computed(() => workScheduleStore.showAddModal),
+      showDetailsModal: computed(() => workScheduleStore.showDetailsModal),
+      editingSchedule: computed(() => workScheduleStore.editingSchedule),
+      selectedSchedule: computed(() => workScheduleStore.selectedSchedule),
+      validationErrors: computed(() => workScheduleStore.validationErrors),
+      searchQuery: computed(() => workScheduleStore.searchQuery),
+      filters: computed(() => workScheduleStore.filters),
+      scheduleForm: computed(() => workScheduleStore.scheduleForm),
+      
+      // Store getters as computed properties
+      scheduleColumns: computed(() => workScheduleStore.scheduleColumns),
+      filterConfig: computed(() => workScheduleStore.filterConfig),
+      
+      // Store actions
+      fetchWorkSchedules: workScheduleStore.fetchWorkSchedules,
+      saveSchedule: workScheduleStore.saveSchedule,
+      editSchedule: workScheduleStore.editSchedule,
+      viewSchedule: workScheduleStore.viewSchedule,
+      deleteSchedule: (schedule) => {
+        if (!confirm(`Are you sure you want to delete "${schedule.name}"? This action cannot be undone.`)) {
+          return
+        }
+        workScheduleStore.deleteSchedule(schedule)
+      },
+      closeModal: workScheduleStore.closeModal,
+      closeDetailsModal: workScheduleStore.closeDetailsModal,
+      applyFrontendFilters: workScheduleStore.applyFrontendFilters,
+      handleFilterChange: workScheduleStore.handleFilterChange,
+      clearFilters: workScheduleStore.clearFilters,
+      formatTime: workScheduleStore.formatTime,
+      calculateWorkingHours: workScheduleStore.calculateWorkingHours,
+      openAddModal: workScheduleStore.openAddModal,
+      closeAddModal: workScheduleStore.closeAddModal,
+      updateScheduleForm: workScheduleStore.updateScheduleForm
     }
   }
 }

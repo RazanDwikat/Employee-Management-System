@@ -346,6 +346,7 @@ import { ref, onMounted, computed } from 'vue'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import SearchFilter from '../../components/common/SearchFilter.vue'
+import { usePayrollRuleStore } from '@/stores/payrollRuleStore'
 import payrollRuleService from '../../services/payrollRuleService.js'
 
 export default {
@@ -356,10 +357,15 @@ export default {
     SearchFilter
   },
   setup() {
-    const payrollRules = ref([])
-    const allPayrollRules = ref([])
-    const loading = ref(false)
-    const error = ref('')
+    const store = usePayrollRuleStore()
+
+    // state from store
+    const payrollRules = computed(() => store.payrollRules)
+    const allPayrollRules = computed(() => store.allPayrollRules)
+    const loading = computed(() => store.loading)
+    const error = computed(() => store.error)
+
+    // local state
     const showAddModal = ref(false)
     const showDetailsModal = ref(false)
     const showImpactModal = ref(false)
@@ -368,26 +374,24 @@ export default {
     const selectedRule = ref(null)
     const impactRule = ref(null)
     const validationErrors = ref({})
-    
-    // Search and filters
+
+    // filters
     const searchQuery = ref('')
-    const filters = ref({
-      rule_type: ''
-    })
-    
-    // Form data
+    const filters = ref({ rule_type: '' })
+
+    // form
     const ruleForm = ref({
       rule_name: '',
       rule_type: '',
       calculation_type: '',
       amount: ''
     })
-    
-    // Options from service
+
+    // options
     const ruleTypeOptions = payrollRuleService.getRuleTypeOptions()
     const calculationTypeOptions = payrollRuleService.getCalculationTypeOptions()
-    
-    // Columns definition
+
+    // table columns
     const ruleColumns = [
       { key: 'rule_name', label: 'Rule Name' },
       { key: 'rule_type', label: 'Type' },
@@ -396,8 +400,8 @@ export default {
       { key: 'impact', label: 'Impact' },
       { key: 'actions', label: 'Actions' }
     ]
-    
-    // Filter configuration
+
+    // filters config
     const filterConfig = [
       {
         key: 'rule_type',
@@ -405,145 +409,31 @@ export default {
         options: ruleTypeOptions
       }
     ]
-    
-    // Computed properties for statistics
-    const lateRulesCount = computed(() => 
-      allPayrollRules.value.filter(rule => rule.rule_type === 'late').length
-    )
-    
-    const overtimeRulesCount = computed(() => 
-      allPayrollRules.value.filter(rule => rule.rule_type === 'overtime').length
-    )
-    
-    const absenceRulesCount = computed(() => 
-      allPayrollRules.value.filter(rule => rule.rule_type === 'absence').length
-    )
-    
-    const leaveRulesCount = computed(() => 
-      allPayrollRules.value.filter(rule => rule.rule_type === 'leave').length
-    )
-    
-    // Fetch payroll rules
-    const fetchPayrollRules = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Fetching payroll rules...')
-        const response = await payrollRuleService.getPayrollRules({ per_page: 50 })
-        console.log('Payroll rules fetched:', response)
-        
-        const data = response.data || response
-        
-        // Ensure data is an array
-        allPayrollRules.value = Array.isArray(data) ? data : []
-        
-        console.log('Processed data:', allPayrollRules.value)
-        
-        // Apply frontend filtering
-        applyFrontendFilters()
-        
-        console.log('Payroll rules assigned:', allPayrollRules.value)
-      } catch (err) {
-        console.error('Error fetching payroll rules:', err)
-        error.value = err.response?.data?.message || 'Failed to fetch payroll rules. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Apply frontend filtering
-    const applyFrontendFilters = () => {
-      if (!Array.isArray(allPayrollRules.value)) {
-        payrollRules.value = []
-        return
-      }
-      
-      let filteredRules = [...allPayrollRules.value]
-      
-      // Apply search filter
-      if (searchQuery.value.trim()) {
-        filteredRules = filteredRules.filter(rule => 
-          rule.rule_name.toLowerCase().includes(searchQuery.value.toLowerCase().trim())
-        )
-      }
-      
-      // Apply rule type filter
-      if (filters.value.rule_type) {
-        filteredRules = filteredRules.filter(rule => 
-          rule.rule_type === filters.value.rule_type
-        )
-      }
-      
-      payrollRules.value = filteredRules
-    }
-    
+
+    // stats
+    const lateRulesCount = computed(() => store.lateRulesCount)
+    const overtimeRulesCount = computed(() => store.overtimeRulesCount)
+    const absenceRulesCount = computed(() => store.absenceRulesCount)
+    const leaveRulesCount = computed(() => store.leaveRulesCount)
+
+    // fetch
+    const fetchPayrollRules = () => store.fetchPayrollRules()
+
+    // filters
     const handleFilterChange = (filterData) => {
       searchQuery.value = filterData.search
       filters.value = filterData.filters
-      applyFrontendFilters()
+      store.applyFilters(searchQuery.value, filters.value)
     }
-    
+
     const clearFilters = () => {
       searchQuery.value = ''
-      filters.value = {
-        rule_type: ''
-      }
-      applyFrontendFilters()
+      filters.value = { rule_type: '' }
+      store.applyFilters('', {})
     }
+
     
-    // Save payroll rule (create or update)
-    const saveRule = async () => {
-      loading.value = true
-      error.value = ''
-      validationErrors.value = {}
-      
-      try {
-        // Prepare form data
-        const formData = {
-          rule_name: ruleForm.value.rule_name.trim(),
-          rule_type: ruleForm.value.rule_type,
-          calculation_type: ruleForm.value.calculation_type,
-          amount: parseFloat(ruleForm.value.amount)
-        }
-        
-        console.log('Saving payroll rule:', formData)
-        console.log('Editing rule ID:', editingRule.value?.id)
-        
-        if (editingRule.value) {
-          // Update existing rule
-          console.log('Updating payroll rule ID:', editingRule.value.id)
-          const response = await payrollRuleService.updatePayrollRule(editingRule.value.id, formData)
-          console.log('Payroll rule updated successfully:', response)
-        } else {
-          // Create new rule
-          console.log('Creating new payroll rule')
-          const response = await payrollRuleService.createPayrollRule(formData)
-          console.log('Payroll rule created successfully:', response)
-        }
-        
-        await fetchPayrollRules()
-        closeModal()
-      } catch (err) {
-        console.error('Error saving payroll rule:', err)
-        console.error('Error response:', err.response?.data)
-        
-        if (err.response?.status === 422) {
-          // Validation errors
-          validationErrors.value = err.response.data.errors || {}
-          console.log('Validation errors:', validationErrors.value)
-          error.value = 'Please fix the validation errors below.'
-        } else {
-          error.value = err.response?.data?.message || 'Failed to save payroll rule. Please try again.'
-        }
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Edit rule
     const editRule = (rule) => {
-      console.log('Editing rule:', rule)
       editingRule.value = rule
       ruleForm.value = {
         rule_name: rule.rule_name,
@@ -553,52 +443,58 @@ export default {
       }
       showAddModal.value = true
     }
-    
-    // View rule details
+
+    // save
+    const saveRule = async () => {
+      validationErrors.value = {}
+
+      const formData = {
+        rule_name: ruleForm.value.rule_name.trim(),
+        rule_type: ruleForm.value.rule_type,
+        calculation_type: ruleForm.value.calculation_type,
+        amount: parseFloat(ruleForm.value.amount)
+      }
+
+      try {
+        if (editingRule.value) {
+          await store.updateRule(editingRule.value.id, formData)
+        } else {
+          await store.createRule(formData)
+        }
+
+        closeModal()
+      } catch (err) {
+        if (err.response?.status === 422) {
+          validationErrors.value = err.response.data.errors || {}
+        }
+      }
+    }
+
+    // view
     const viewRule = async (rule) => {
       try {
-        console.log('Fetching rule details for ID:', rule.id)
-        const response = await payrollRuleService.getPayrollRule(rule.id)
-        console.log('Rule details fetched:', response)
-        selectedRule.value = response.data || response
-        showDetailsModal.value = true
-      } catch (err) {
-        console.error('Error fetching rule details:', err)
-        // Fallback to table data if API fails
+        const res = await store.getRule(rule.id)
+        selectedRule.value = res.data || res
+      } catch {
         selectedRule.value = rule
-        showDetailsModal.value = true
       }
+
+      showDetailsModal.value = true
     }
-    
-    // Delete rule
+
+    // delete
     const deleteRule = async (rule) => {
-      if (!confirm(`Are you sure you want to delete "${rule.rule_name}"? This action cannot be undone.`)) {
-        return
-      }
-      
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log(`Deleting payroll rule ${rule.id}`)
-        await payrollRuleService.deletePayrollRule(rule.id)
-        console.log('Payroll rule deleted successfully')
-        await fetchPayrollRules()
-      } catch (err) {
-        console.error('Error deleting payroll rule:', err)
-        error.value = err.response?.data?.message || 'Failed to delete payroll rule. Please try again.'
-      } finally {
-        loading.value = false
-      }
+      if (!confirm(`Are you sure you want to delete "${rule.rule_name}"?`)) return
+      await store.deleteRule(rule.id)
     }
-    
-    // Preview impact
+
+    // preview
     const previewImpact = (rule) => {
       impactRule.value = rule
       showImpactModal.value = true
     }
-    
-    // Close modal
+
+    // modals
     const closeModal = () => {
       showAddModal.value = false
       editingRule.value = null
@@ -610,70 +506,49 @@ export default {
       }
       validationErrors.value = {}
     }
-    
-    // Close details modal
+
     const closeDetailsModal = () => {
       showDetailsModal.value = false
       selectedRule.value = null
     }
-    
-    // Close impact modal
+
     const closeImpactModal = () => {
       showImpactModal.value = false
       impactRule.value = null
     }
-    
-    // On rule type change
+
+    // auto calc type
     const onRuleTypeChange = () => {
-      // Auto-select calculation type based on rule type
-      if (ruleForm.value.rule_type === 'late' || ruleForm.value.rule_type === 'overtime') {
-        if (!ruleForm.value.calculation_type || !['per_minute', 'per_hour'].includes(ruleForm.value.calculation_type)) {
-          ruleForm.value.calculation_type = 'per_minute'
-        }
-      } else if (ruleForm.value.rule_type === 'absence' || ruleForm.value.rule_type === 'leave') {
-        if (!ruleForm.value.calculation_type || !['fixed', 'per_day'].includes(ruleForm.value.calculation_type)) {
-          ruleForm.value.calculation_type = 'fixed'
-        }
+      if (['late', 'overtime'].includes(ruleForm.value.rule_type)) {
+        ruleForm.value.calculation_type = 'per_minute'
+      } else {
+        ruleForm.value.calculation_type = 'fixed'
       }
     }
-    
-    // Helper methods
-    const getRuleTypeInfo = (ruleType) => {
-      return payrollRuleService.getRuleTypeInfo(ruleType)
+
+    // helpers
+    const getRuleTypeInfo = (type) => payrollRuleService.getRuleTypeInfo(type)
+    const getCalculationTypeInfo = (type) => payrollRuleService.getCalculationTypeInfo(type)
+    const formatAmount = (amount, type) => payrollRuleService.formatAmount(amount, type)
+
+    const getRuleTypeBadgeClass = (type) => {
+      return `rule-type-badge ${getRuleTypeInfo(type).color}`
     }
-    
-    const getCalculationTypeInfo = (calculationType) => {
-      return payrollRuleService.getCalculationTypeInfo(calculationType)
+
+    const getAmountClass = (type) => {
+      return `amount-badge ${getRuleTypeInfo(type).color}`
     }
-    
-    const formatAmount = (amount, calculationType) => {
-      return payrollRuleService.formatAmount(amount, calculationType)
+
+    const formatDate = (date) => {
+      if (!date) return 'N/A'
+      return new Date(date).toLocaleDateString('en-US')
     }
-    
-    const getRuleTypeBadgeClass = (ruleType) => {
-      const info = getRuleTypeInfo(ruleType)
-      return `rule-type-badge ${info.color}`
-    }
-    
-    const getAmountClass = (ruleType) => {
-      const info = getRuleTypeInfo(ruleType)
-      return `amount-badge ${info.color}`
-    }
-    
-    const formatDate = (dateString) => {
-      if (!dateString) return 'N/A'
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
-    }
-    
-    // Fetch data on component mount
+
+    // mount
     onMounted(() => {
       fetchPayrollRules()
     })
-    
+
     return {
       payrollRules,
       allPayrollRules,
@@ -699,11 +574,10 @@ export default {
       absenceRulesCount,
       leaveRulesCount,
       fetchPayrollRules,
-      applyFrontendFilters,
       handleFilterChange,
       clearFilters,
       saveRule,
-      editRule,
+      editRule, 
       viewRule,
       deleteRule,
       previewImpact,

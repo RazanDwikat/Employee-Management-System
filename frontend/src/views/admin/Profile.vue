@@ -115,14 +115,16 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import userService from '../../services/userService'
+import { useUserStore } from '@/stores/userStore'
 
 export default {
   name: 'Profile',
   setup() {
     const authStore = useAuthStore()
+    const userStore = useUserStore()
+    
     const loading = ref(false)
     const successMessage = ref('')
     const errorMessage = ref('')
@@ -174,7 +176,7 @@ export default {
           updateData.password_confirmation = profileForm.value.password_confirmation
         }
 
-        const response = await userService.updateProfile(updateData)
+        const response = await userStore.updateProfile(updateData)
         
         // Update auth store with new user data
         authStore.setUser(response.user)

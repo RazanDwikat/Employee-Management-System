@@ -15,13 +15,13 @@
       </div>
       
       <div class="action-buttons">
-        <button @click="showGenerateModal = true" class="generate-btn" :disabled="loading">
+        <button @click="openGenerateModal" class="generate-btn" :disabled="loading">
           Generate Salaries
         </button>
-        <button @click="showAdjustmentModal = true" class="adjustment-btn" :disabled="loading">
+        <button @click="openAdjustmentModal" class="adjustment-btn" :disabled="loading">
           Add Adjustment
         </button>
-        <button @click="showBulkActionsModal = true" class="bulk-actions-btn" :disabled="loading">
+        <button @click="openBulkActionsModal" class="bulk-actions-btn" :disabled="loading">
           Bulk Actions
         </button>
       </div>
@@ -459,11 +459,11 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { onMounted, computed } from 'vue'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import SearchFilter from '../../components/common/SearchFilter.vue'
-import salaryService from '../../services/salaryService.js'
+import { useSalaryStore } from '@/stores/salaryStore'
 
 export default {
   name: 'SalaryManagement',
@@ -473,479 +473,83 @@ export default {
     SearchFilter
   },
   setup() {
-    const salaries = ref([])
-    const allSalaries = ref([])
-    const employees = ref([])
-    const loading = ref(false)
-    const error = ref('')
-    const showGenerateModal = ref(false)
-    const showAdjustmentModal = ref(false)
-    const showDetailsModal = ref(false)
-    const showBulkActionsModal = ref(false)
-    const generateLoading = ref(false)
-    const adjustmentLoading = ref(false)
-    const bulkLoading = ref(false)
-    const selectedSalary = ref(null)
+    const salaryStore = useSalaryStore()
     
-    // Search and filters
-    const searchQuery = ref('')
-    const filters = ref({
-      status: '',
-      month: '',
-      year: ''
-    })
-    
-    // Form data
-    const generateForm = ref({
-      month: '',
-      year: ''
-    })
-    
-    const adjustmentForm = ref({
-      employee_id: '',
-      type: '',
-      amount: '',
-      reason: '',
-      adjustment_date: ''
-    })
-    
-    const bulkForm = ref({
-      action: '',
-      month: '',
-      year: ''
-    })
-    
-    // Options from service
-    const statusOptions = salaryService.getSalaryStatusOptions()
-    const adjustmentTypeOptions = salaryService.getAdjustmentTypeOptions()
-    const monthOptions = salaryService.getMonthOptions()
-    const yearOptions = salaryService.getYearOptions()
-    
-    // Columns definition
-    const salaryColumns = [
-      { key: 'employee', label: 'Employee' },
-      { key: 'period', label: 'Period' },
-      { key: 'base_salary', label: 'Base Salary' },
-      { key: 'total_bonus', label: 'Bonus' },
-      { key: 'total_deductions', label: 'Deductions' },
-      { key: 'net_salary', label: 'Net Salary' },
-      { key: 'status', label: 'Status' },
-      { key: 'actions', label: 'Actions' }
-    ]
-    
-    // Filter configuration
-    const filterConfig = [
-      {
-        key: 'status',
-        placeholder: 'All Status',
-        options: statusOptions
-      },
-      {
-        key: 'month',
-        placeholder: 'All Months',
-        options: monthOptions
-      },
-      {
-        key: 'year',
-        placeholder: 'All Years',
-        options: yearOptions
-      }
-    ]
-    
-    // Computed properties
-    const salarySummary = computed(() => {
-      return salaryService.getSalarySummary(allSalaries.value)
-    })
-    
-    // Fetch salaries
-    const fetchSalaries = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Fetching salaries...')
-        const response = await salaryService.getSalaries({ per_page: 50 })
-        console.log('Salaries fetched:', response)
-        
-        const data = response.data || response
-        
-        // Ensure data is an array
-        allSalaries.value = Array.isArray(data) ? data : []
-        
-        console.log('Processed data:', allSalaries.value)
-        
-        // Apply frontend filtering
-        applyFrontendFilters()
-        
-        console.log('Salaries assigned:', allSalaries.value)
-      } catch (err) {
-        console.error('Error fetching salaries:', err)
-        error.value = err.response?.data?.message || 'Failed to fetch salaries. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Apply frontend filtering
-    const applyFrontendFilters = () => {
-      if (!Array.isArray(allSalaries.value)) {
-        salaries.value = []
-        return
-      }
-      
-      let filteredSalaries = [...allSalaries.value]
-      
-      // Apply search filter
-      if (searchQuery.value.trim()) {
-        filteredSalaries = filteredSalaries.filter(salary => 
-          (salary.employee?.user?.name?.toLowerCase().includes(searchQuery.value.toLowerCase().trim()) ||
-           salary.employee?.department?.name?.toLowerCase().includes(searchQuery.value.toLowerCase().trim()))
-        )
-      }
-      
-      // Apply status filter
-      if (filters.value.status) {
-        filteredSalaries = filteredSalaries.filter(salary => 
-          salary.status === filters.value.status
-        )
-      }
-      
-      // Apply month filter
-      if (filters.value.month) {
-        filteredSalaries = filteredSalaries.filter(salary => 
-          salary.month === parseInt(filters.value.month)
-        )
-      }
-      
-      // Apply year filter
-      if (filters.value.year) {
-        filteredSalaries = filteredSalaries.filter(salary => 
-          salary.year === parseInt(filters.value.year)
-        )
-      }
-      
-      salaries.value = filteredSalaries
-    }
-    
-    const handleFilterChange = (filterData) => {
-      searchQuery.value = filterData.search
-      filters.value = filterData.filters
-      applyFrontendFilters()
-    }
-    
-    const clearFilters = () => {
-      searchQuery.value = ''
-      filters.value = {
-        status: '',
-        month: '',
-        year: ''
-      }
-      applyFrontendFilters()
-    }
-    
-    // Generate salaries
-    const generateSalaries = async () => {
-      generateLoading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Generating salaries:', generateForm.value)
-        const response = await salaryService.generateMonthlySalaries(generateForm.value)
-        console.log('Salaries generated successfully:', response)
-        
-        await fetchSalaries()
-        closeGenerateModal()
-      } catch (err) {
-        console.error('Error generating salaries:', err)
-        error.value = err.response?.data?.message || 'Failed to generate salaries. Please try again.'
-      } finally {
-        generateLoading.value = false
-      }
-    }
-    
-    // Add adjustment
-    const addAdjustment = async () => {
-      adjustmentLoading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Adding adjustment:', adjustmentForm.value)
-        const response = await salaryService.addPayrollAdjustment(adjustmentForm.value)
-        console.log('Adjustment added successfully:', response)
-        
-        await fetchSalaries()
-        closeAdjustmentModal()
-      } catch (err) {
-        console.error('Error adding adjustment:', err)
-        error.value = err.response?.data?.message || 'Failed to add adjustment. Please try again.'
-      } finally {
-        adjustmentLoading.value = false
-      }
-    }
-    
-    // Finalize salary
-    const finalizeSalary = async (salary) => {
-      if (!confirm(`Are you sure you want to finalize salary for ${salary.employee?.user?.name}?`)) {
-        return
-      }
-      
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log(`Finalizing salary ${salary.id}`)
-        await salaryService.updateSalaryStatus(salary.id, 'finalized')
-        console.log('Salary finalized successfully')
-        await fetchSalaries()
-      } catch (err) {
-        console.error('Error finalizing salary:', err)
-        error.value = err.response?.data?.message || 'Failed to finalize salary. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // Mark as paid
-    const markAsPaid = async (salary) => {
-      if (!confirm(`Are you sure you want to mark salary as paid for ${salary.employee?.user?.name}?`)) {
-        return
-      }
-      
-      loading.value = true
-      error.value = ''
-      
-      try {
-        console.log(`Marking salary ${salary.id} as paid`)
-        await salaryService.updateSalaryStatus(salary.id, 'paid')
-        console.log('Salary marked as paid successfully')
-        await fetchSalaries()
-      } catch (err) {
-        console.error('Error marking salary as paid:', err)
-        error.value = err.response?.data?.message || 'Failed to mark salary as paid. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    // View salary details
-    const viewSalary = async (salary) => {
-      try {
-        console.log('Fetching salary details for ID:', salary.id)
-        const response = await salaryService.getSalary(salary.id)
-        console.log('Salary details fetched:', response)
-        selectedSalary.value = response.data || response
-        showDetailsModal.value = true
-      } catch (err) {
-        console.error('Error fetching salary details:', err)
-        // Fallback to table data if API fails
-        selectedSalary.value = salary
-        showDetailsModal.value = true
-      }
-    }
-    
-    // Close modals
-    const closeGenerateModal = () => {
-      showGenerateModal.value = false
-      generateForm.value = {
-        month: '',
-        year: ''
-      }
-    }
-    
-    const closeAdjustmentModal = () => {
-      showAdjustmentModal.value = false
-      adjustmentForm.value = {
-        employee_id: '',
-        type: '',
-        amount: '',
-        reason: '',
-        adjustment_date: ''
-      }
-    }
-    
-    const closeDetailsModal = () => {
-      showDetailsModal.value = false
-      selectedSalary.value = null
-    }
-
-    // Execute bulk action
-    const executeBulkAction = async () => {
-      bulkLoading.value = true
-      error.value = ''
-      
-      try {
-        console.log('Executing bulk action:', bulkForm.value)
-        
-        let params = {}
-        
-        if (bulkForm.value.action === 'finalize_all') {
-          params = {
-            status: 'draft'
-          }
-          console.log('Finalizing all draft salaries')
-          const response = await salaryService.bulkUpdateSalaryStatus({
-            ...params,
-            status: 'finalized'
-          })
-          console.log('Draft salaries finalized:', response)
-        } else if (bulkForm.value.action === 'mark_all_paid') {
-          params = {
-            status: 'finalized'
-          }
-          console.log('Marking all finalized salaries as paid')
-          const response = await salaryService.bulkUpdateSalaryStatus({
-            ...params,
-            status: 'paid'
-          })
-          console.log('Finalized salaries marked as paid:', response)
-        } else if (bulkForm.value.action === 'mark_month_paid') {
-          params = {
-            month: bulkForm.value.month,
-            year: bulkForm.value.year,
-            status: 'finalized'
-          }
-          console.log(`Marking ${formatMonthYear(bulkForm.value.month, bulkForm.value.year)} salaries as paid`)
-          const response = await salaryService.bulkUpdateSalaryStatus({
-            ...params,
-            status: 'paid'
-          })
-          console.log('Month salaries marked as paid:', response)
-        }
-        
-        await fetchSalaries()
-        closeBulkActionsModal()
-      } catch (err) {
-        console.error('Error executing bulk action:', err)
-        error.value = err.response?.data?.message || 'Failed to execute bulk action. Please try again.'
-      } finally {
-        bulkLoading.value = false
-      }
-    }
-
-    // Close bulk actions modal
-    const closeBulkActionsModal = () => {
-      showBulkActionsModal.value = false
-      bulkForm.value = {
-        action: '',
-        month: '',
-        year: ''
-      }
-    }
-    
-    // Helper methods
-    const getSalaryStatusInfo = (status) => {
-      return salaryService.getSalaryStatusInfo(status)
-    }
-    
-    const getAdjustmentTypeInfo = (type) => {
-      return salaryService.getAdjustmentTypeInfo(type)
-    }
-    
-    const formatCurrency = (amount) => {
-      return salaryService.formatCurrency(amount)
-    }
-    
-    const formatMonthYear = (month, year) => {
-      return salaryService.formatMonthYear(month, year)
-    }
-    
-    const formatDate = (dateString) => {
-      if (!dateString) return 'N/A'
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
-    }
-    
-    const getStatusClass = (status) => {
-      const info = getSalaryStatusInfo(status)
-      return `status-badge ${info.color}`
-    }
-    
-    const getAdjustmentClass = (type) => {
-      const info = getAdjustmentTypeInfo(type)
-      return `adjustment-type ${info.color}`
-    }
-    
-    const getAdjustmentAmountClass = (type) => {
-      return `adjustment-amount ${type}`
-    }
-    
-    // Fetch employees for adjustments
-    const fetchEmployees = async () => {
-      try {
-        console.log('Fetching employees for adjustments...')
-        const response = await salaryService.getEmployeesForAdjustments()
-        console.log('Employees fetched:', response)
-        
-        const data = response.data || response
-        
-        // Ensure data is an array
-        employees.value = Array.isArray(data) ? data : (data.data || [])
-        
-        console.log('Processed employees:', employees.value)
-      } catch (err) {
-        console.error('Error fetching employees:', err)
-        employees.value = []
-      }
-    }
-
     // Fetch data on component mount
     onMounted(() => {
-      fetchSalaries()
-      fetchEmployees()
+      salaryStore.initializeData()
     })
     
     return {
-      salaries,
-      allSalaries,
-      employees,
-      loading,
-      error,
-      showGenerateModal,
-      showAdjustmentModal,
-      showDetailsModal,
-      showBulkActionsModal,
-      generateLoading,
-      adjustmentLoading,
-      bulkLoading,
-      selectedSalary,
-      searchQuery,
-      filters,
-      generateForm,
-      adjustmentForm,
-      bulkForm,
-      salaryColumns,
-      filterConfig,
-      statusOptions,
-      adjustmentTypeOptions,
-      monthOptions,
-      yearOptions,
-      salarySummary,
-      fetchSalaries,
-      fetchEmployees,
-      applyFrontendFilters,
-      handleFilterChange,
-      clearFilters,
-      generateSalaries,
-      addAdjustment,
-      finalizeSalary,
-      markAsPaid,
-      viewSalary,
-      closeGenerateModal,
-      closeAdjustmentModal,
-      closeDetailsModal,
-      closeBulkActionsModal,
-      executeBulkAction,
-      getSalaryStatusInfo,
-      getAdjustmentTypeInfo,
-      formatCurrency,
-      formatMonthYear,
-      formatDate,
-      getStatusClass,
-      getAdjustmentClass,
-      getAdjustmentAmountClass
+      // Store state as computed properties for reactivity
+      salaries: computed(() => salaryStore.salaries),
+      allSalaries: computed(() => salaryStore.allSalaries),
+      employees: computed(() => salaryStore.employees),
+      loading: computed(() => salaryStore.loading),
+      error: computed(() => salaryStore.error),
+      showGenerateModal: computed(() => salaryStore.showGenerateModal),
+      showAdjustmentModal: computed(() => salaryStore.showAdjustmentModal),
+      showDetailsModal: computed(() => salaryStore.showDetailsModal),
+      showBulkActionsModal: computed(() => salaryStore.showBulkActionsModal),
+      generateLoading: computed(() => salaryStore.generateLoading),
+      adjustmentLoading: computed(() => salaryStore.adjustmentLoading),
+      bulkLoading: computed(() => salaryStore.bulkLoading),
+      selectedSalary: computed(() => salaryStore.selectedSalary),
+      searchQuery: computed(() => salaryStore.searchQuery),
+      filters: computed(() => salaryStore.filters),
+      generateForm: computed(() => salaryStore.generateForm),
+      adjustmentForm: computed(() => salaryStore.adjustmentForm),
+      bulkForm: computed(() => salaryStore.bulkForm),
+      
+      // Store getters as computed properties
+      salaryColumns: computed(() => salaryStore.salaryColumns),
+      filterConfig: computed(() => salaryStore.filterConfig),
+      statusOptions: computed(() => salaryStore.statusOptions),
+      adjustmentTypeOptions: computed(() => salaryStore.adjustmentTypeOptions),
+      monthOptions: computed(() => salaryStore.monthOptions),
+      yearOptions: computed(() => salaryStore.yearOptions),
+      salarySummary: computed(() => salaryStore.salarySummary),
+      
+      // Store actions
+      fetchSalaries: salaryStore.fetchSalaries,
+      fetchEmployees: salaryStore.fetchEmployees,
+      applyFrontendFilters: salaryStore.applyFrontendFilters,
+      handleFilterChange: salaryStore.handleFilterChange,
+      clearFilters: salaryStore.clearFilters,
+      generateSalaries: salaryStore.generateSalaries,
+      addAdjustment: salaryStore.addAdjustment,
+      openGenerateModal: salaryStore.openGenerateModal,
+      openAdjustmentModal: salaryStore.openAdjustmentModal,
+      openBulkActionsModal: salaryStore.openBulkActionsModal,
+      updateGenerateForm: salaryStore.updateGenerateForm,
+      updateAdjustmentForm: salaryStore.updateAdjustmentForm,
+      updateBulkForm: salaryStore.updateBulkForm,
+      finalizeSalary: (salary) => {
+        if (!confirm(`Are you sure you want to finalize salary for ${salary.employee?.user?.name}?`)) {
+          return
+        }
+        salaryStore.finalizeSalary(salary)
+      },
+      markAsPaid: (salary) => {
+        if (!confirm(`Are you sure you want to mark salary as paid for ${salary.employee?.user?.name}?`)) {
+          return
+        }
+        salaryStore.markAsPaid(salary)
+      },
+      viewSalary: salaryStore.viewSalary,
+      closeGenerateModal: salaryStore.closeGenerateModal,
+      closeAdjustmentModal: salaryStore.closeAdjustmentModal,
+      closeDetailsModal: salaryStore.closeDetailsModal,
+      closeBulkActionsModal: salaryStore.closeBulkActionsModal,
+      executeBulkAction: salaryStore.executeBulkAction,
+      getSalaryStatusInfo: salaryStore.getSalaryStatusInfo,
+      getAdjustmentTypeInfo: salaryStore.getAdjustmentTypeInfo,
+      formatCurrency: salaryStore.formatCurrency,
+      formatMonthYear: salaryStore.formatMonthYear,
+      formatDate: salaryStore.formatDate,
+      getStatusClass: salaryStore.getStatusClass,
+      getAdjustmentClass: salaryStore.getAdjustmentClass,
+      getAdjustmentAmountClass: salaryStore.getAdjustmentAmountClass
     }
   }
 }

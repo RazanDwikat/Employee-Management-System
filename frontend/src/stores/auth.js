@@ -57,6 +57,10 @@ export const useAuthStore = defineStore('auth', {
         this.logout()
         throw error
       }
+    },
+
+    setUser(userData) {
+      this.user = userData
     }
 
   }

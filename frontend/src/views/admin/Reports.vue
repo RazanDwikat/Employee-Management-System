@@ -227,7 +227,7 @@
 </template>
 
 <script>
-import reportService from '@/services/reportService'
+import { useReportStore } from '@/stores/reportStore'
 import ChartContainer from '@/components/reports/ChartContainer.vue'
 import StatGrid from '@/components/reports/StatGrid.vue'
 
@@ -238,361 +238,154 @@ export default {
     StatGrid
   },
   data() {
-    return {
-      loading: {
-        departments: false,
-        attendance: false,
-        salaries: false,
-        leaves: false,
-        pdf: false
-      },
-      
-      // Data
-      departmentData: [],
-      attendanceData: {},
-      salaryData: {},
-      leaveData: {},
-      
-      // Stats
-      employeeStats: {
-        total: 0
-      },
-      departmentStats: {
-        total: 0
-      },
-      attendanceStats: {
-        present: 0,
-        late: 0,
-        absent: 0,
-        average: 0
-      },
-      salaryStats: {
-        total: 0
-      },
-      
-      // Filters
-      attendanceFilters: {
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-        employee_id: null,
-        department_id: null
-      },
-      salaryFilters: {
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear()
-      },
-      leaveFilters: {
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear()
-      },
-      
-      // Options
-      months: [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ],
-      years: Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i)
-    }
+    return {}
   },
   
   computed: {
+    reportStore() {
+      return useReportStore()
+    },
+    
+    loading() {
+      return this.reportStore.loading
+    },
+    
+    departmentData() {
+      return this.reportStore.departmentData
+    },
+    
+    attendanceData() {
+      return this.reportStore.attendanceData
+    },
+    
+    salaryData() {
+      return this.reportStore.salaryData
+    },
+    
+    leaveData() {
+      return this.reportStore.leaveData
+    },
+    
+    departmentStats() {
+      return this.reportStore.departmentStats
+    },
+    
+    attendanceStats() {
+      return this.reportStore.attendanceStats
+    },
+    
+    salaryStats() {
+      return this.reportStore.salaryStats
+    },
+    
+    attendanceFilters() {
+      return this.reportStore.attendanceFilters
+    },
+    
+    salaryFilters() {
+      return this.reportStore.salaryFilters
+    },
+    
+    leaveFilters() {
+      return this.reportStore.leaveFilters
+    },
+    
+    months() {
+      return this.reportStore.months
+    },
+    
+    years() {
+      return this.reportStore.years
+    },
+    
     departmentChartData() {
-      return {
-        labels: this.departmentData.map(dept => dept.department),
-        datasets: [{
-          data: this.departmentData.map(dept => dept.employees_count),
-          backgroundColor: [
-            '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
-            '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'
-          ],
-          borderWidth: 2,
-          borderColor: '#fff'
-        }]
-      }
+      return this.reportStore.departmentChartData
     },
     
     departmentChartOptions() {
-      return {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              padding: 10,
-              font: { size: 11 }
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const label = context.label || ''
-                const value = context.parsed || 0
-                const total = context.dataset.data.reduce((a, b) => a + b, 0)
-                const percentage = ((value / total) * 100).toFixed(1)
-                return `${label}: ${value} (${percentage}%)`
-              }
-            }
-          }
-        }
-      }
+      return this.reportStore.departmentChartOptions
     },
     
     attendanceChartData() {
-      if (!this.attendanceData.daily_report) return { labels: [], datasets: [] }
-      
-      const recentDays = this.attendanceData.daily_report.slice(-6)
-      return {
-        labels: recentDays.map(day => this.formatDate(day.date)),
-        datasets: [
-          {
-            label: 'Present',
-            data: recentDays.map(day => day.summary.present),
-            backgroundColor: '#10B981'
-          },
-          {
-            label: 'Late',
-            data: recentDays.map(day => day.summary.late),
-            backgroundColor: '#F59E0B'
-          },
-          {
-            label: 'Absent',
-            data: recentDays.map(day => day.summary.absent),
-            backgroundColor: '#EF4444'
-          }
-        ]
-      }
+      return this.reportStore.attendanceChartData
     },
     
     attendanceChartOptions() {
-      return {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            stacked: true,
-            grid: { display: false }
-          },
-          y: {
-            stacked: true,
-            beginAtZero: true
-          }
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top'
-          }
-        }
-      }
+      return this.reportStore.attendanceChartOptions
     },
     
     attendanceStatsData() {
-      return [
-        { label: 'Present', value: this.attendanceStats.present, valueClass: 'text-green-600' },
-        { label: 'Late', value: this.attendanceStats.late, valueClass: 'text-yellow-600' },
-        { label: 'Absent', value: this.attendanceStats.absent, valueClass: 'text-red-600' },
-        { label: 'Average', value: `${this.attendanceStats.average}%` }
-      ]
+      return this.reportStore.attendanceStatsData
     },
     
     salaryChartData() {
-      return {
-        labels: ['Total', 'Average', 'Highest', 'Lowest'],
-        datasets: [{
-          label: 'Salary ($)',
-          data: [
-            this.salaryData.total_salaries,
-            this.salaryData.average_salary,
-            this.salaryData.highest_salary,
-            this.salaryData.lowest_salary
-          ],
-          backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444']
-        }]
-      }
+      return this.reportStore.salaryChartData
     },
     
     salaryChartOptions() {
-      return {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: (value) => '$' + value.toLocaleString()
-            }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (context) => 'Salary: ' + reportService.formatCurrency(context.parsed.y)
-            }
-          }
-        }
-      }
+      return this.reportStore.salaryChartOptions
     },
     
     salaryStatsData() {
-      return [
-        { label: 'Total Salaries', value: this.formatCurrency(this.salaryData.total_salaries) },
-        { label: 'Average Salary', value: this.formatCurrency(this.salaryData.average_salary) },
-        { label: 'Highest Salary', value: this.formatCurrency(this.salaryData.highest_salary) },
-        { label: 'Lowest Salary', value: this.formatCurrency(this.salaryData.lowest_salary) }
-      ]
+      return this.reportStore.salaryStatsData
     },
     
     leaveChartData() {
-      return {
-        labels: ['Approved', 'Rejected', 'Pending'],
-        datasets: [{
-          data: [
-            this.leaveData.approved,
-            this.leaveData.rejected,
-            this.leaveData.pending
-          ],
-          backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
-          borderWidth: 2,
-          borderColor: '#fff'
-        }]
-      }
+      return this.reportStore.leaveChartData
     },
     
     leaveChartOptions() {
-      return {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              padding: 10,
-              font: { size: 11 }
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const label = context.label || ''
-                const value = context.parsed || 0
-                const total = context.dataset.data.reduce((a, b) => a + b, 0)
-                const percentage = ((value / total) * 100).toFixed(1)
-                return `${label}: ${value} (${percentage}%)`
-              }
-            }
-          }
-        }
-      }
+      return this.reportStore.leaveChartOptions
     },
     
     leaveStatsData() {
-      return [
-        { label: 'Approved', value: this.leaveData.approved, labelClass: 'text-green-600', valueClass: 'text-green-900' },
-        { label: 'Rejected', value: this.leaveData.rejected, labelClass: 'text-red-600', valueClass: 'text-red-900' },
-        { label: 'Pending', value: this.leaveData.pending, labelClass: 'text-yellow-600', valueClass: 'text-yellow-900' },
-        { label: 'Total Leaves', value: this.leaveData.total_leaves }
-      ]
+      return this.reportStore.leaveStatsData
     }
   },
   
   async mounted() {
-    await this.loadInitialData()
+    await this.reportStore.loadAllReports()
   },
   
   methods: {
-    async loadInitialData() {
-      await Promise.all([
-        this.loadDepartmentReport(),
-        this.loadAttendanceReport(),
-        this.loadSalaryReport(),
-        this.loadLeaveReport()
-      ])
-    },
-    
     async loadDepartmentReport() {
-      this.loading.departments = true
-      try {
-        const data = await reportService.getDepartmentReport()
-        this.departmentData = data
-        this.departmentStats.total = data.reduce((sum, dept) => sum + dept.employees_count, 0)
-      } catch (error) {
-        console.error('Error loading department report:', error)
-      } finally {
-        this.loading.departments = false
-      }
+      await this.reportStore.fetchDepartmentReport()
     },
     
     async loadAttendanceReport() {
-      this.loading.attendance = true
-      try {
-        const data = await reportService.getAttendanceReport(this.attendanceFilters)
-        this.attendanceData = data
-        
-        // Calculate stats
-        if (data.daily_report && data.daily_report.length > 0) {
-          const totals = data.daily_report.reduce((acc, day) => {
-            acc.present += day.summary.present
-            acc.late += day.summary.late
-            acc.absent += day.summary.absent
-            return acc
-          }, { present: 0, late: 0, absent: 0 })
-          
-          this.attendanceStats = totals
-          const totalDays = totals.present + totals.late + totals.absent
-          this.attendanceStats.average = totalDays > 0 ? Math.round((totals.present / totalDays) * 100) : 0
-        }
-      } catch (error) {
-        console.error('Error loading attendance report:', error)
-      } finally {
-        this.loading.attendance = false
-      }
+      await this.reportStore.fetchAttendanceReport()
     },
     
     async loadSalaryReport() {
-      this.loading.salaries = true
-      try {
-        const data = await reportService.getSalaryReport(this.salaryFilters.month, this.salaryFilters.year)
-        this.salaryData = data
-        this.salaryStats.total = data.total_salaries || 0
-      } catch (error) {
-        console.error('Error loading salary report:', error)
-      } finally {
-        this.loading.salaries = false
-      }
+      await this.reportStore.fetchSalaryReport()
     },
     
     async loadLeaveReport() {
-      this.loading.leaves = true
-      try {
-        const data = await reportService.getLeaveReport(this.leaveFilters.month, this.leaveFilters.year)
-        this.leaveData = data
-      } catch (error) {
-        console.error('Error loading leave report:', error)
-      } finally {
-        this.loading.leaves = false
-      }
+      await this.reportStore.fetchLeaveReport()
     },
     
     async downloadAttendancePdf() {
-      this.loading.pdf = true
-      try {
-        await reportService.downloadAttendancePdf(this.attendanceFilters)
-      } catch (error) {
-        console.error('Error downloading PDF:', error)
-      } finally {
-        this.loading.pdf = false
-      }
+      await this.reportStore.downloadAttendancePdf()
     },
     
     formatCurrency(amount) {
-      return reportService.formatCurrency(amount)
+      return this.reportStore.formatCurrency(amount)
     },
     
     formatDate(dateString) {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      return this.reportStore.formatDate(dateString)
+    },
+    
+    updateAttendanceFilters(filters) {
+      this.reportStore.updateAttendanceFilters(filters)
+    },
+    
+    updateSalaryFilters(filters) {
+      this.reportStore.updateSalaryFilters(filters)
+    },
+    
+    updateLeaveFilters(filters) {
+      this.reportStore.updateLeaveFilters(filters)
     }
   },
   

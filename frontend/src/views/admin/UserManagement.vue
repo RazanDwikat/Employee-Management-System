@@ -14,7 +14,7 @@
         />
       </div>
       
-      <button @click="showAddModal = true" class="add-btn" :disabled="loading">
+      <button @click="openAddModal" class="add-btn" :disabled="loading">
         Add New User
       </button>
     </div>
@@ -66,7 +66,8 @@
     
     <!-- Add/Edit User Modal -->
     <BaseModal 
-      v-model="showAddModal"
+      :model-value="showAddModal"
+      @update:model-value="closeAddModal"
       :title="editingUser ? 'Edit User' : 'Add New User'"
       :loading="loading"
       loading-text="Saving..."
@@ -131,9 +132,9 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import userService from '../../services/userService'
+import { useUserStore } from '@/stores/userStore'
 import DataTable from '../../components/common/DataTable.vue'
 import BaseModal from '../../components/common/BaseModal.vue'
 import SearchFilter from '../../components/common/SearchFilter.vue'
@@ -147,274 +148,52 @@ export default {
   },
   setup() {
     const authStore = useAuthStore()
-    
-    const users = ref([])
-    const allUsers = ref([]) // Store all users for frontend filtering
-    const loading = ref(false)
-    const error = ref('')
-    const showAddModal = ref(false)
-    const editingUser = ref(null)
-    
-    // Search and filters
-    const searchQuery = ref('')
-    const filters = ref({
-      role: '',
-      status: '',
-      department_id: ''
-    })
-    
-    const userForm = ref({
-      name: '',
-      email: '',
-      password: '',
-      role: '',
-      status: 'active',
-      employee_number: '',
-      hire_date: '',
-      employment_status: ''
-    })
-    
-    // Columns definitions
-    const userColumns = [
-      { key: 'id', label: 'ID' },
-      { key: 'name', label: 'Name' },
-      { key: 'email', label: 'Email' },
-      { key: 'role', label: 'Role' },
-      { key: 'status', label: 'Status' },
-      { key: 'actions', label: 'Actions' }
-    ]
-    
-    // Filter configuration
-    const filterConfig = [
-      {
-        key: 'role',
-        placeholder: 'All Roles',
-        options: [
-          { value: 'admin', label: 'Admin' },
-          { value: 'manager', label: 'Manager' },
-          { value: 'employee', label: 'Employee' }
-        ]
-      },
-      {
-        key: 'status',
-        placeholder: 'All Status',
-        options: [
-          { value: 'active', label: 'Active' },
-          { value: 'inactive', label: 'Inactive' }
-        ]
-      }
-    ]
-    
-    // Computed property for filtered users
-    const filteredUsers = computed(() => users.value)
-    
-    const fetchUsers = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        // Fetch all users without filters
-        const fetchedUsers = await userService.getUsers()
-        allUsers.value = fetchedUsers
-        
-        // Apply frontend filtering
-        applyFrontendFilters()
-      } catch (err) {
-        console.error('Error fetching users:', err)
-        error.value = err.response?.data?.message || 'Failed to fetch users. Please try again.'
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    const applyFrontendFilters = () => {
-      let filteredUsers = [...allUsers.value]
-      
-      // Apply search filter
-      if (searchQuery.value.trim()) {
-        filteredUsers = filteredUsers.filter(user => 
-          user.name.toLowerCase().includes(searchQuery.value.toLowerCase().trim())
-        )
-      }
-      
-      // Apply role filter
-      if (filters.value.role) {
-        filteredUsers = filteredUsers.filter(user => user.role === filters.value.role)
-      }
-      
-      // Apply status filter
-      if (filters.value.status) {
-        filteredUsers = filteredUsers.filter(user => user.status === filters.value.status)
-      }
-      
-      // Apply department filter
-      if (filters.value.department_id) {
-        filteredUsers = filteredUsers.filter(user => 
-          user.employee?.department_id == filters.value.department_id
-        )
-      }
-      
-      users.value = filteredUsers
-    }
-    
-    const handleFilterChange = (filterData) => {
-      searchQuery.value = filterData.search
-      filters.value = filterData.filters
-      applyFrontendFilters()
-    }
-    
-    const saveUser = async () => {
-      loading.value = true
-      error.value = ''
-      
-      try {
-        const userData = { ...userForm.value }
-        
-        // Remove password from update if it's empty
-        if (editingUser.value && !userData.password) {
-          delete userData.password
-        }
-        
-        if (editingUser.value) {
-          await userService.updateUser(editingUser.value.id, userData)
-        } else {
-          await userService.createUser(userData)
-        }
-        
-        await fetchUsers()
-        closeModal()
-      } catch (err) {
-        error.value = err.response?.data?.message || 'Failed to save user. Please try again.'
-        console.error('Error saving user:', err)
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    const editUser = (user) => {
-      editingUser.value = user
-      userForm.value = { 
-        name: user.name,
-        role: user.role,
-        status: user.status,
-        employee_number: user.employee?.employee_number || '',
-        hire_date: user.employee?.hire_date || '',
-        employment_status: user.employee?.employment_status || ''
-      }
-      showAddModal.value = true
-    }
-    
-    const deleteUser = async (userId) => {
-      if (confirm('Are you sure you want to delete this user?')) {
-        loading.value = true
-        error.value = ''
-        
-        try {
-          await userService.deleteUser(userId)
-          await fetchUsers()
-        } catch (err) {
-          error.value = 'Failed to delete user. Please try again.'
-          console.error('Error deleting user:', err)
-        } finally {
-          loading.value = false
-        }
-      }
-    }
-    
-    const reactivateUser = async (userId) => {
-      if (confirm('Are you sure you want to reactivate this user?')) {
-        loading.value = true
-        error.value = ''
-        
-        try {
-          await userService.reactivateUser(userId)
-          await fetchUsers()
-        } catch (err) {
-          error.value = 'Failed to reactivate user. Please try again.'
-          console.error('Error reactivating user:', err)
-        } finally {
-          loading.value = false
-        }
-      }
-    }
-    
-    const closeModal = () => {
-      showAddModal.value = false
-      editingUser.value = null
-      userForm.value = {
-        name: '',
-        email: '',
-        password: '',
-        role: '',
-        status: 'active',
-        employee_number: '',
-        hire_date: '',
-        employment_status: ''
-      }
-    }
-    
-    const clearFilters = () => {
-      searchQuery.value = ''
-      filters.value = {
-        role: '',
-        status: '',
-        department_id: ''
-      }
-      applyFrontendFilters()
-    }
-    
-    const getRoleClass = (role) => {
-      switch (role) {
-        case 'admin':
-          return 'role-badge admin'
-        case 'manager':
-          return 'role-badge manager'
-        case 'employee':
-          return 'role-badge employee'
-        default:
-          return 'role-badge'
-      }
-    }
-    
-    const getStatusClass = (status) => {
-      switch (status) {
-        case 'active':
-          return 'status-badge active'
-        case 'inactive':
-          return 'status-badge inactive'
-        default:
-          return 'status-badge'
-      }
-    }
+    const userStore = useUserStore()
     
     onMounted(() => {
-      fetchUsers()
+      userStore.fetchUsers()
     })
     
     return {
-      users,
-      allUsers,
-      filteredUsers,
-      loading,
-      error,
-      showAddModal,
-      editingUser,
-      searchQuery,
-      filters,
-      userForm,
-      userColumns,
-      filterConfig,
-      fetchUsers,
-      saveUser,
-      editUser,
-      deleteUser,
-      reactivateUser,
-      closeModal,
-      applyFrontendFilters,
-      handleFilterChange,
-      clearFilters,
-      getRoleClass,
-      getStatusClass
+      // Store state as computed properties for reactivity
+      users: computed(() => userStore.users),
+      allUsers: computed(() => userStore.allUsers),
+      filteredUsers: computed(() => userStore.filteredUsers),
+      loading: computed(() => userStore.loading),
+      error: computed(() => userStore.error),
+      showAddModal: computed(() => userStore.showAddModal),
+      editingUser: computed(() => userStore.editingUser),
+      searchQuery: computed(() => userStore.searchQuery),
+      filters: computed(() => userStore.filters),
+      userForm: computed(() => userStore.userForm),
+      
+      // Store getters as computed properties
+      userColumns: computed(() => userStore.userColumns),
+      filterConfig: computed(() => userStore.filterConfig),
+      
+      // Store actions
+      fetchUsers: userStore.fetchUsers,
+      saveUser: userStore.saveUser,
+      editUser: userStore.editUser,
+      deleteUser: (userId) => {
+        if (confirm('Are you sure you want to delete this user?')) {
+          userStore.deleteUser(userId)
+        }
+      },
+      reactivateUser: (userId) => {
+        if (confirm('Are you sure you want to reactivate this user?')) {
+          userStore.reactivateUser(userId)
+        }
+      },
+      closeModal: userStore.closeModal,
+      applyFrontendFilters: userStore.applyFrontendFilters,
+      handleFilterChange: userStore.handleFilterChange,
+      clearFilters: userStore.clearFilters,
+      getRoleClass: userStore.getRoleClass,
+      getStatusClass: userStore.getStatusClass,
+      openAddModal: userStore.openAddModal,
+      closeAddModal: userStore.closeAddModal,
+      updateUserForm: userStore.updateUserForm
     }
   }
 }
