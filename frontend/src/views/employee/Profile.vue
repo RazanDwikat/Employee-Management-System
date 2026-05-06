@@ -139,9 +139,9 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import employeeService from '../../services/employeeService'
+import { useEmployeeStore } from '@/stores/employeeStore'
 import BaseCard from '../../components/common/BaseCard.vue'
 import PageHeader from '../../components/common/PageHeader.vue'
 import LoadingSpinner from '../../components/common/LoadingSpinner.vue'
@@ -163,97 +163,73 @@ export default {
   },
   setup() {
     const authStore = useAuthStore()
-    
-    // Reactive data
-    const loading = ref(false)
-    const submitting = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    
-    const user = ref({})
-    const profileForm = ref({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      current_password: '',
-      password: '',
-      password_confirmation: ''
-    })
+    const employeeStore = useEmployeeStore()
     
     // Methods
     const loadProfile = async () => {
       try {
-        loading.value = true
-        
-        // Get full profile data from API
-        const response = await employeeService.getProfile()
-        user.value = response.user
-        
-        // Initialize form with user data (including employee data)
-        profileForm.value = {
-          name: user.value.name || '',
-          email: user.value.email || '',
-          phone: user.value.employee?.phone || '',
-          address: user.value.employee?.address || '',
-          current_password: '',
-          password: '',
-          password_confirmation: ''
+        const response = await employeeStore.getProfile()
+        if (response.user) {
+          // Initialize form with user data (including employee data)
+          employeeStore.profileForm = {
+            name: response.user.name || '',
+            email: response.user.email || '',
+            phone: response.user.employee?.phone || '',
+            address: response.user.employee?.address || '',
+            current_password: '',
+            password: '',
+            password_confirmation: ''
+          }
         }
         
       } catch (error) {
         console.error('Error loading profile:', error)
-        showMessage('Error loading profile', 'error')
-      } finally {
-        loading.value = false
+        employeeStore.showMessage('Error loading profile', 'error')
       }
     }
     
     const handleUpdateProfile = async () => {
       try {
-        submitting.value = true
-        
         // Validate password fields if password is being changed
-        if (profileForm.value.password) {
-          if (profileForm.value.password !== profileForm.value.password_confirmation) {
-            showMessage('Passwords do not match', 'error')
+        if (employeeStore.profileForm.password) {
+          if (employeeStore.profileForm.password !== employeeStore.profileForm.password_confirmation) {
+            employeeStore.showMessage('Passwords do not match', 'error')
             return
           }
           
-          if (!profileForm.value.current_password) {
-            showMessage('Current password is required to change password', 'error')
+          if (!employeeStore.profileForm.current_password) {
+            employeeStore.showMessage('Current password is required to change password', 'error')
             return
           }
         }
         
         // Prepare update data
         const updateData = {
-          name: profileForm.value.name,
-          email: profileForm.value.email,
-          phone: profileForm.value.phone,
-          address: profileForm.value.address
+          name: employeeStore.profileForm.name,
+          email: employeeStore.profileForm.email,
+          phone: employeeStore.profileForm.phone,
+          address: employeeStore.profileForm.address
         }
         
         // Add password fields only if password is being changed
-        if (profileForm.value.password) {
-          updateData.password = profileForm.value.password
-          updateData.current_password = profileForm.value.current_password
+        if (employeeStore.profileForm.password) {
+          updateData.password = employeeStore.profileForm.password
+          updateData.current_password = employeeStore.profileForm.current_password
         }
         
         // Update profile
-        const response = await employeeService.updateProfile(updateData)
+        const response = await employeeStore.updateProfile(updateData)
         
         // Update auth store with new user data
         if (response.user) {
           authStore.setUser(response.user)
-          user.value = response.user
           
           // Update form with new data
-          profileForm.value = {
-            name: user.value.name || '',
-            email: user.value.email || '',
-            phone: user.value.employee?.phone || '',
-            address: user.value.employee?.address || '',
+          employeeStore.profileForm = {
+            name: response.user.name || '',
+            email: response.user.email || '',
+            phone: response.user.employee?.phone || '',
+            address: response.user.employee?.address || '',
             current_password: '',
             password: '',
             password_confirmation: ''
@@ -261,33 +237,20 @@ export default {
         }
         
         // Clear password fields
-        profileForm.value.current_password = ''
-        profileForm.value.password = ''
-        profileForm.value.password_confirmation = ''
+        employeeStore.profileForm.current_password = ''
+        employeeStore.profileForm.password = ''
+        employeeStore.profileForm.password_confirmation = ''
         
-        showMessage('Profile updated successfully!', 'success')
+        employeeStore.showMessage('Profile updated successfully!', 'success')
         
       } catch (error) {
         console.error('Error updating profile:', error)
-        showMessage(error.response?.data?.message || 'Error updating profile', 'error')
-      } finally {
-        submitting.value = false
+        employeeStore.showMessage(error.response?.data?.message || 'Error updating profile', 'error')
       }
     }
     
     const handleReset = () => {
       loadProfile()
-      message.value = ''
-    }
-    
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      // Auto-hide message after 5 seconds
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
     }
     
     const getInitials = (name) => {
@@ -306,15 +269,22 @@ export default {
     })
     
     return {
-      loading,
-      submitting,
-      message,
-      messageType,
-      user,
-      profileForm,
+      // Stores
+      authStore,
+      
+      // Store state as computed properties for reactivity
+      loading: computed(() => employeeStore.loading.profile),
+      submitting: computed(() => employeeStore.loading.submitting),
+      message: computed(() => employeeStore.message),
+      messageType: computed(() => employeeStore.messageType),
+      user: computed(() => authStore.user),
+      profileForm: computed(() => employeeStore.profileForm),
+      
+      // Store actions
       handleUpdateProfile,
       handleReset,
-      getInitials
+      getInitials,
+      updateProfileForm: employeeStore.updateProfileForm
     }
   }
 }

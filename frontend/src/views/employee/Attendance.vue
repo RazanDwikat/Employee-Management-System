@@ -77,16 +77,18 @@
             <!-- Filters -->
             <div class="history-filters">
               <FormSelect
-                v-model="filters.month"
+                :model-value="filters.month"
                 :options="monthOptions"
                 placeholder="All Months"
+                @update:model-value="(value) => updateFilters('month', value)"
                 @change="loadAttendanceHistory"
               />
               
               <FormSelect
-                v-model="filters.year"
+                :model-value="filters.year"
                 :options="yearOptions"
                 placeholder="All Years"
+                @update:model-value="(value) => updateFilters('year', value)"
                 @change="loadAttendanceHistory"
               />
             </div>
@@ -201,8 +203,8 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
-import employeeService from '../../services/employeeService'
+import { onMounted, computed } from 'vue'
+import { useEmployeeStore } from '@/stores/employeeStore'
 import BaseCard from '../../components/common/BaseCard.vue'
 import PageHeader from '../../components/common/PageHeader.vue'
 import LoadingSpinner from '../../components/common/LoadingSpinner.vue'
@@ -227,295 +229,44 @@ export default {
     AppMessage
   },
   setup() {
-    // Reactive data
-    const loading = ref(false)
-    const checkingIn = ref(false)
-    const checkingOut = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    
-    const todayAttendance = ref(null)
-    const attendanceHistory = ref([])
-    const stats = ref({
-      present: 0,
-      late: 0,
-      absent: 0,
-      percentage: 0
-    })
-    
-    const pagination = ref({
-      current_page: 1,
-      last_page: 1,
-      per_page: 10,
-      total: 0
-    })
-    
-    const filters = ref({
-      month: '',
-      year: ''
-    })
-    
-    // Computed properties
-    const months = computed(() => [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ])
-    
-    const availableYears = computed(() => {
-      const currentYear = new Date().getFullYear()
-      return Array.from({ length: 5 }, (_, i) => currentYear - i)
-    })
-    
-    const monthOptions = computed(() => [
-      { value: '', label: 'All Months' },
-      ...months.value.map((month, index) => ({ value: index + 1, label: month }))
-    ])
-    
-    const yearOptions = computed(() => [
-      { value: '', label: 'All Years' },
-      ...availableYears.value.map(year => ({ value: year, label: year.toString() }))
-    ])
-    
-    // Methods
-    const loadTodayAttendance = async () => {
-      try {
-        todayAttendance.value = await employeeService.getTodayAttendance()
-      } catch (error) {
-        console.error('Error loading today attendance:', error)
-      }
-    }
-    
-    const loadAttendanceHistory = async (page = 1) => {
-      try {
-        loading.value = true
-        
-        const params = {
-          page,
-          ...filters.value
-        }
-        
-        const response = await employeeService.getAttendanceHistory(params)
-        attendanceHistory.value = response.data || []
-        
-        if (response.meta) {
-          pagination.value = response.meta
-        }
-        
-        // Calculate stats
-        calculateStats()
-        
-      } catch (error) {
-        console.error('Error loading attendance history:', error)
-        showMessage('Error loading attendance history', 'error')
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    const handleCheckIn = async () => {
-      try {
-        checkingIn.value = true
-        
-        const response = await employeeService.checkIn()
-        todayAttendance.value = response.attendance
-        
-        showMessage('Checked in successfully!', 'success')
-        
-        // Refresh data immediately
-        await loadTodayAttendance()
-        await loadAttendanceHistory()
-        
-      } catch (error) {
-        console.error('Error checking in:', error)
-        showMessage(error.response?.data?.message || 'Error checking in', 'error')
-      } finally {
-        checkingIn.value = false
-      }
-    }
-    
-    const handleCheckOut = async () => {
-      try {
-        checkingOut.value = true
-        
-        const response = await employeeService.checkOut()
-        todayAttendance.value = response.attendance
-        
-        showMessage('Checked out successfully!', 'success')
-        
-        // Refresh data immediately
-        await loadTodayAttendance()
-        await loadAttendanceHistory()
-        
-      } catch (error) {
-        console.error('Error checking out:', error)
-        showMessage(error.response?.data?.message || 'Error checking out', 'error')
-      } finally {
-        checkingOut.value = false
-      }
-    }
-    
-    const calculateStats = () => {
-      const records = attendanceHistory.value
-      const total = records.length
-      
-      if (total === 0) {
-        stats.value = { present: 0, late: 0, absent: 0, percentage: 0 }
-        return
-      }
-      
-      const present = records.filter(r => r.status === 'present').length
-      const late = records.filter(r => r.status === 'late').length
-      const absent = records.filter(r => r.status === 'absent').length
-      
-      const percentage = total > 0 ? Math.round((present / total) * 100) : 0
-      
-      stats.value = { present, late, absent, percentage }
-    }
-    
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      // Auto-hide message after 5 seconds
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
-    }
-    
-    const formatDate = (dateString) => {
-      return employeeService.formatDate(dateString)
-    }
-    
-    const formatTime = (timeString) => {
-      return employeeService.formatTime(timeString)
-    }
-    
-    const getStatusClass = (status) => {
-      return employeeService.getAttendanceStatusColor(status)
-    }
-    
-    const getStatusIcon = (status) => {
-      const icons = {
-        present: '✅',
-        late: '⏰',
-        absent: '❌',
-        null: '⏳'
-      }
-      return icons[status] || '⏳'
-    }
-    
-    const getStatusIconClass = (status) => {
-      const classes = {
-        present: 'success',
-        late: 'warning',
-        absent: 'danger',
-        null: 'pending'
-      }
-      return classes[status] || 'pending'
-    }
-    
-    const getStatusText = (status) => {
-      const texts = {
-        present: 'Present',
-        late: 'Late',
-        absent: 'Absent',
-        null: 'Not Recorded'
-      }
-      return texts[status] || 'Not Recorded'
-    }
-    
-    const calculateDuration = (checkIn, checkOut) => {
-      if (!checkIn || !checkOut) return '--'
-      
-      try {
-        // Extract time from datetime string
-        const extractTime = (dateTimeStr) => {
-          if (!dateTimeStr) return null
-          
-          // If it's a full datetime string, extract the time part
-          if (typeof dateTimeStr === 'string') {
-            // Handle "YYYY-MM-DD HH:MM:SS" format
-            if (dateTimeStr.includes(' ')) {
-              const timePart = dateTimeStr.split(' ')[1]
-              if (timePart && timePart.includes(':')) {
-                return timePart
-              }
-            }
-            
-            // Handle "HH:MM:SS" format directly
-            if (dateTimeStr.includes(':')) {
-              return dateTimeStr
-            }
-          }
-          
-          return dateTimeStr
-        }
-        
-        const checkInTime = extractTime(checkIn)
-        const checkOutTime = extractTime(checkOut)
-        
-        if (!checkInTime || !checkOutTime) {
-          return '--'
-        }
-        
-        // Create date objects with the same date but different times
-        const inTime = new Date(`2000-01-01T${checkInTime}`)
-        const outTime = new Date(`2000-01-01T${checkOutTime}`)
-        
-        // Check if dates are valid
-        if (isNaN(inTime.getTime()) || isNaN(outTime.getTime())) {
-          console.warn('Invalid time format:', { checkIn, checkOut, checkInTime, checkOutTime })
-          return '--'
-        }
-        
-        const diff = outTime - inTime
-        
-        // Check if difference is negative (checkout before checkin)
-        if (diff < 0) {
-          return '--'
-        }
-        
-        const hours = Math.floor(diff / (1000 * 60 * 60))
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-        
-        return `${hours}h ${minutes}m`
-      } catch (error) {
-        console.error('Error calculating duration:', error, { checkIn, checkOut })
-        return '--'
-      }
-    }
+    const employeeStore = useEmployeeStore()
     
     // Lifecycle
     onMounted(() => {
-      loadTodayAttendance()
-      loadAttendanceHistory()
+      employeeStore.initializeAttendance()
     })
     
     return {
-      loading,
-      checkingIn,
-      checkingOut,
-      todayAttendance,
-      attendanceHistory,
-      stats,
-      pagination,
-      filters,
-      months,
-      availableYears,
-      monthOptions,
-      yearOptions,
-      message,
-      messageType,
-      handleCheckIn,
-      handleCheckOut,
-      loadAttendanceHistory,
-      formatDate,
-      formatTime,
-      getStatusClass,
-      getStatusIcon,
-      getStatusIconClass,
-      getStatusText,
-      calculateDuration
+      // Store state as computed properties for reactivity
+      loading: computed(() => employeeStore.loading.attendance),
+      checkingIn: computed(() => employeeStore.loading.checkIn),
+      checkingOut: computed(() => employeeStore.loading.checkOut),
+      todayAttendance: computed(() => employeeStore.todayAttendance),
+      attendanceHistory: computed(() => employeeStore.attendanceHistory),
+      stats: computed(() => employeeStore.attendanceStats),
+      pagination: computed(() => employeeStore.attendancePagination),
+      filters: computed(() => employeeStore.attendanceFilters),
+      message: computed(() => employeeStore.message),
+      messageType: computed(() => employeeStore.messageType),
+      
+      // Store getters as computed properties
+      months: computed(() => employeeStore.months),
+      availableYears: computed(() => employeeStore.availableYears),
+      monthOptions: computed(() => employeeStore.monthOptions),
+      yearOptions: computed(() => employeeStore.yearOptions),
+      
+      // Store actions
+      handleCheckIn: employeeStore.handleCheckIn,
+      handleCheckOut: employeeStore.handleCheckOut,
+      loadAttendanceHistory: employeeStore.loadAttendanceHistory,
+      formatDate: employeeStore.formatDate,
+      formatTime: employeeStore.formatTime,
+      getStatusClass: employeeStore.getAttendanceStatusClass,
+      getStatusIcon: employeeStore.getStatusIcon,
+      getStatusIconClass: employeeStore.getStatusIconClass,
+      getStatusText: employeeStore.getStatusText,
+      calculateDuration: employeeStore.calculateDuration,
+      updateFilters: employeeStore.updateAttendanceFilters
     }
   }
 }

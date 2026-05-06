@@ -20,7 +20,6 @@
         
         <div class="salary-display">
           <div class="salary-amount">
-            <span class="currency-symbol">$</span>
             <span class="amount">{{ formatCurrency(currentSalary?.net_salary || 0) }}</span>
           </div>
           <div class="salary-period">
@@ -35,11 +34,11 @@
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Total Bonus:</span>
-            <span class="breakdown-value positive">+{{ formatCurrency(currentSalary?.total_bonus || 0) }}</span>
+            <span class="breakdown-value positive">{{ formatCurrency(currentSalary?.total_bonus || 0) }}</span>
           </div>
           <div class="breakdown-item">
             <span class="breakdown-label">Total Deductions:</span>
-            <span class="breakdown-value negative">-{{ formatCurrency(currentSalary?.total_deductions || 0) }}</span>
+            <span class="breakdown-value negative">{{ formatCurrency(currentSalary?.total_deductions || 0) }}</span>
           </div>
           <div class="breakdown-item total">
             <span class="breakdown-label">Net Salary:</span>
@@ -261,38 +260,12 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import employeeService from '../../services/employeeService'
+import { useEmployeeStore } from '@/stores/employeeStore'
 
 export default {
   name: 'EmployeeSalaries',
   setup() {
-    // Reactive data
-    const loading = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    
-    const salaries = ref([])
-    const currentSalary = ref(null)
-    const expandedSalaryId = ref(null)
-    
-    const stats = ref({
-      totalEarned: 0,
-      averageSalary: 0,
-      monthsPaid: 0,
-      pendingMonths: 0
-    })
-    
-    const pagination = ref({
-      current_page: 1,
-      last_page: 1,
-      per_page: 10,
-      total: 0
-    })
-    
-    const filters = ref({
-      month: '',
-      year: ''
-    })
+    const employeeStore = useEmployeeStore()
     
     // Computed properties
     const months = computed(() => [
@@ -305,26 +278,27 @@ export default {
       return Array.from({ length: 5 }, (_, i) => currentYear - i)
     })
     
+    // Local state
+    const currentSalary = ref(null)
+    const expandedSalaryId = ref(null)
+    const stats = ref({
+      totalEarned: 0,
+      averageSalary: 0,
+      monthsPaid: 0,
+      pendingMonths: 0
+    })
+    
     // Methods
     const loadSalaries = async (page = 1) => {
       try {
-        loading.value = true
-        
-        const params = {
+        const response = await employeeStore.loadSalaries({
           page,
-          ...filters.value
-        }
-        
-        const response = await employeeService.getSalaries(params)
-        salaries.value = response.data || []
-        
-        if (response.meta) {
-          pagination.value = response.meta
-        }
+          ...employeeStore.filters
+        })
         
         // Set current salary (first item if available)
-        if (salaries.value.length > 0) {
-          currentSalary.value = salaries.value[0]
+        if (employeeStore.salaries.length > 0) {
+          currentSalary.value = employeeStore.salaries[0]
         }
         
         // Calculate stats
@@ -332,14 +306,12 @@ export default {
         
       } catch (error) {
         console.error('Error loading salaries:', error)
-        showMessage('Error loading salary information', 'error')
-      } finally {
-        loading.value = false
+        employeeStore.showMessage('Error loading salary information', 'error')
       }
     }
     
     const calculateStats = () => {
-      const allSalaries = salaries.value
+      const allSalaries = employeeStore.salaries
       
       if (allSalaries.length === 0) {
         stats.value = { totalEarned: 0, averageSalary: 0, monthsPaid: 0, pendingMonths: 0 }
@@ -349,7 +321,7 @@ export default {
       const paidSalaries = allSalaries.filter(s => s.status === 'paid')
       const pendingSalaries = allSalaries.filter(s => s.status === 'pending')
       
-      const totalEarned = paidSalaries.reduce((sum, s) => sum + (s.net_salary || 0), 0)
+      const totalEarned = paidSalaries.reduce((sum, s) => sum + parseFloat(s.net_salary || 0), 0)
       const averageSalary = paidSalaries.length > 0 ? totalEarned / paidSalaries.length : 0
       
       stats.value = {
@@ -361,13 +333,13 @@ export default {
     }
     
     const toggleSalaryDetails = (salaryId) => {
-      expandedSalaryId.value = expandedSalaryId.value === salaryId ? null : salaryId
+      employeeStore.expandedSalaryId = employeeStore.expandedSalaryId === salaryId ? null : salaryId
     }
     
     const downloadPayslip = async (salary) => {
       try {
         if (!salary.payslip_url) {
-          showMessage('Payslip not available', 'error')
+          employeeStore.showMessage('Payslip not available', 'error')
           return
         }
         
@@ -380,22 +352,16 @@ export default {
         link.click()
         document.body.removeChild(link)
         
-        showMessage('Payslip downloaded successfully!', 'success')
+        employeeStore.showMessage('Payslip downloaded successfully!', 'success')
         
       } catch (error) {
         console.error('Error downloading payslip:', error)
-        showMessage('Error downloading payslip', 'error')
+        employeeStore.showMessage('Error downloading payslip', 'error')
       }
     }
     
     const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      // Auto-hide message after 5 seconds
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
+      employeeStore.showMessage(text, type)
     }
     
     const formatCurrency = (amount) => {
@@ -458,13 +424,7 @@ export default {
     }
     
     const formatDate = (dateString) => {
-      if (!dateString) return ''
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      return employeeStore.formatDate(dateString)
     }
     
     // Lifecycle
@@ -473,17 +433,51 @@ export default {
     })
     
     return {
-      loading,
-      message,
-      messageType,
-      salaries,
-      currentSalary,
-      expandedSalaryId,
-      stats,
-      pagination,
-      filters,
-      months,
-      availableYears,
+      // Store state as computed properties for reactivity
+      loading: computed(() => false), // No loading state in store for salaries
+      message: computed(() => employeeStore.message),
+      messageType: computed(() => employeeStore.messageType),
+      salaries: computed(() => employeeStore.salaries),
+      currentSalary: computed(() => employeeStore.salaries[0] || null),
+      expandedSalaryId: computed(() => employeeStore.expandedSalaryId || null),
+      stats: computed(() => {
+        const allSalaries = employeeStore.salaries
+        if (allSalaries.length === 0) {
+          return { totalEarned: 0, averageSalary: 0, monthsPaid: 0, pendingMonths: 0 }
+        }
+        
+        const paidSalaries = allSalaries.filter(s => s.status === 'paid')
+        const pendingSalaries = allSalaries.filter(s => s.status === 'pending')
+        
+        const totalEarned = paidSalaries.reduce((sum, s) => sum + parseFloat(s.net_salary || 0), 0)
+        const averageSalary = paidSalaries.length > 0 ? totalEarned / paidSalaries.length : 0
+        
+        return {
+          totalEarned,
+          averageSalary,
+          monthsPaid: paidSalaries.length,
+          pendingMonths: pendingSalaries.length
+        }
+      }),
+      pagination: computed(() => ({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: employeeStore.salaries.length
+      })),
+      filters: computed(() => employeeStore.salaryFilters || { month: '', year: '' }),
+      
+      // Store getters as computed properties
+      months: computed(() => [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ]),
+      availableYears: computed(() => {
+        const currentYear = new Date().getFullYear()
+        return Array.from({ length: 5 }, (_, i) => currentYear - i)
+      }),
+      
+      // Store actions
       loadSalaries,
       toggleSalaryDetails,
       downloadPayslip,
@@ -493,7 +487,15 @@ export default {
       getDetailTypeLabel,
       getDetailTypeClass,
       getDetailAmount,
-      formatDate
+      formatDate,
+      updateFilters: (field, value) => {
+        // Temporary filter update since not in store
+        if (!employeeStore.salaryFilters) {
+          employeeStore.salaryFilters = { month: '', year: '' }
+        }
+        employeeStore.salaryFilters[field] = value
+        loadSalaries()
+      }
     }
   }
 }

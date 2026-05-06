@@ -7,7 +7,7 @@
     </div>
     
     <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
+    <div v-if="loading.leaves" class="loading-container">
       <div class="loading-spinner"></div>
       <p>Loading leave requests...</p>
     </div>
@@ -124,14 +124,14 @@
           
           <!-- Filters -->
           <div class="history-filters">
-            <select v-model="filters.status" class="filter-select" @change="loadLeaves">
+            <select :value="filters.status" class="filter-select" @change="(e) => { updateLeaveFilters('status', e.target.value); loadLeaves() }">
               <option value="">All Status</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </select>
             
-            <select v-model="filters.year" class="filter-select" @change="loadLeaves">
+            <select :value="filters.year" class="filter-select" @change="(e) => { updateLeaveFilters('year', e.target.value); loadLeaves() }">
               <option value="">All Years</option>
               <option v-for="year in availableYears" :key="year" :value="year">
                 {{ year }}
@@ -231,211 +231,53 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
-import employeeService from '../../services/employeeService'
+import { onMounted, computed } from 'vue'
+import { useEmployeeStore } from '@/stores/employeeStore'
 
 export default {
   name: 'EmployeeLeaves',
   setup() {
-    // Reactive data
-    const loading = ref(false)
-    const submitting = ref(false)
-    const cancelling = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    
-    const leaves = ref([])
-    const leaveTypes = ref([])
-    const pagination = ref({
-      current_page: 1,
-      last_page: 1,
-      per_page: 10,
-      total: 0
-    })
-    
-    const leaveForm = ref({
-      leave_type_id: '',
-      start_date: '',
-      end_date: '',
-      start_time: '',
-      end_time: '',
-      description: ''
-    })
-    
-    const filters = ref({
-      status: '',
-      year: ''
-    })
-    
-    // Computed properties
-    const minDate = computed(() => {
-      const today = new Date()
-      return today.toISOString().split('T')[0]
-    })
-    
-    const availableYears = computed(() => {
-      const currentYear = new Date().getFullYear()
-      return Array.from({ length: 5 }, (_, i) => currentYear - i)
-    })
-    
-    // Methods
-    const loadLeaveTypes = async () => {
-      try {
-        const response = await employeeService.getLeaveTypes()
-        
-        // Extract data from Laravel API response
-        leaveTypes.value = response.data || []
-      } catch (error) {
-        console.error('Error loading leave types:', error)
-      }
-    }
-    
-    const loadLeaves = async (page = 1) => {
-      try {
-        loading.value = true
-        
-        const params = {
-          page,
-          ...filters.value
-        }
-        
-        const response = await employeeService.getLeaves(params)
-        leaves.value = response.data || []
-        
-        if (response.meta) {
-          pagination.value = response.meta
-        }
-        
-      } catch (error) {
-        console.error('Error loading leaves:', error)
-        showMessage('Error loading leave requests', 'error')
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    const handleSubmitLeave = async () => {
-      try {
-        submitting.value = true
-        
-        // Validate form
-        if (!leaveForm.value.leave_type_id) {
-          showMessage('Please select a leave type', 'error')
-          return
-        }
-        
-        if (!leaveForm.value.start_date || !leaveForm.value.end_date) {
-          showMessage('Please select start and end dates', 'error')
-          return
-        }
-        
-        if (new Date(leaveForm.value.end_date) < new Date(leaveForm.value.start_date)) {
-          showMessage('End date must be after start date', 'error')
-          return
-        }
-        
-        // Submit leave request
-        await employeeService.submitLeave(leaveForm.value)
-        
-        // Reset form
-        handleReset()
-        
-        // Reload leaves
-        await loadLeaves()
-        
-        showMessage('Leave request submitted successfully!', 'success')
-        
-      } catch (error) {
-        console.error('Error submitting leave:', error)
-        showMessage(error.response?.data?.message || 'Error submitting leave request', 'error')
-      } finally {
-        submitting.value = false
-      }
-    }
-    
-    const handleCancelLeave = async (leaveId) => {
-      if (!confirm('Are you sure you want to cancel this leave request?')) {
-        return
-      }
-      
-      try {
-        cancelling.value = true
-        
-        await employeeService.cancelLeave(leaveId)
-        
-        // Reload leaves
-        await loadLeaves()
-        
-        showMessage('Leave request cancelled successfully!', 'success')
-        
-      } catch (error) {
-        console.error('Error cancelling leave:', error)
-        showMessage(error.response?.data?.message || 'Error cancelling leave request', 'error')
-      } finally {
-        cancelling.value = false
-      }
-    }
-    
-    const handleReset = () => {
-      leaveForm.value = {
-        leave_type_id: '',
-        start_date: '',
-        end_date: '',
-        start_time: '',
-        end_time: '',
-        description: ''
-      }
-      message.value = ''
-    }
-    
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      // Auto-hide message after 5 seconds
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
-    }
-    
-    const formatDate = (dateString) => {
-      return employeeService.formatDate(dateString)
-    }
-    
-    const formatTime = (timeString) => {
-      return employeeService.formatTime(timeString)
-    }
-    
-    const getStatusClass = (status) => {
-      return employeeService.getLeaveStatusColor(status)
-    }
+    const employeeStore = useEmployeeStore()
     
     // Lifecycle
     onMounted(() => {
-      loadLeaveTypes()
-      loadLeaves()
+      employeeStore.initializeLeaves()
     })
     
     return {
-      loading,
-      submitting,
-      cancelling,
-      message,
-      messageType,
-      leaves,
-      leaveTypes,
-      pagination,
-      leaveForm,
-      filters,
-      minDate,
-      availableYears,
-      handleSubmitLeave,
-      handleCancelLeave,
-      handleReset,
-      loadLeaves,
-      formatDate,
-      formatTime,
-      getStatusClass
+      // Store state as computed properties for reactivity
+      loading: computed(() => employeeStore.loading),
+      submitting: computed(() => employeeStore.loading.submitting),
+      cancelling: computed(() => employeeStore.loading.cancelling),
+      message: computed(() => employeeStore.message),
+      messageType: computed(() => employeeStore.messageType),
+      leaves: computed(() => employeeStore.leaves),
+      leaveTypes: computed(() => employeeStore.leaveTypes),
+      pagination: computed(() => employeeStore.leavePagination),
+      leaveForm: computed(() => employeeStore.leaveForm),
+      filters: computed(() => employeeStore.leaveFilters),
+      
+      // Store getters as computed properties
+      minDate: computed(() => employeeStore.minDate),
+      availableYears: computed(() => employeeStore.availableYears),
+      
+      // Store actions
+      handleSubmitLeave: () => {
+        employeeStore.submitLeave(employeeStore.leaveForm)
+      },
+      handleCancelLeave: (leaveId) => {
+        if (!confirm('Are you sure you want to cancel this leave request?')) {
+          return
+        }
+        employeeStore.cancelLeave(leaveId)
+      },
+      handleReset: employeeStore.resetLeaveForm,
+      loadLeaves: employeeStore.loadLeaves,
+      formatDate: employeeStore.formatDate,
+      formatTime: employeeStore.formatTime,
+      getStatusClass: employeeStore.getLeaveStatusClass,
+      updateLeaveForm: employeeStore.updateLeaveForm,
+      updateLeaveFilters: employeeStore.updateLeaveFilters
     }
   }
 }

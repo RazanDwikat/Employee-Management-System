@@ -148,9 +148,9 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
-import employeeService from '../../services/employeeService'
+import { useEmployeeStore } from '@/stores/employeeStore'
 import BaseCard from '../../components/common/BaseCard.vue'
 
 export default {
@@ -160,123 +160,38 @@ export default {
   },
   setup() {
     const authStore = useAuthStore()
-    
-    // Reactive data
-    const loading = ref({
-      dashboard: false,
-      checkIn: false,
-      checkOut: false
-    })
-    
-    const stats = ref({
-      present_days: 0,
-      late_days: 0,
-      absent_days: 0,
-      leaves_this_month: 0,
-      today_status: 'not_checked_in',
-      total_work_days: 0
-    })
-    
-    const todayAttendance = ref(null)
-    const recentLeaves = ref([])
-    
-    // Methods
-    const loadDashboardData = async () => {
-      try {
-        loading.value.dashboard = true
-        
-        // Load dashboard stats
-        const dashboardData = await employeeService.getDashboardStats()
-        stats.value = dashboardData.stats
-        
-        // Load today's attendance
-        todayAttendance.value = await employeeService.getTodayAttendance()
-        
-        // Load recent leaves
-        const leavesData = await employeeService.getLeaves({ limit: 5 })
-        recentLeaves.value = leavesData.data || []
-        
-                
-      } catch (error) {
-        console.error('Error loading dashboard data:', error)
-      } finally {
-        loading.value.dashboard = false
-      }
-    }
-    
-    const handleCheckIn = async () => {
-      try {
-        loading.value.checkIn = true
-        const response = await employeeService.checkIn()
-        todayAttendance.value = response.attendance
-        
-        // Refresh stats
-        await loadDashboardData()
-        
-      } catch (error) {
-        console.error('Error checking in:', error)
-      } finally {
-        loading.value.checkIn = false
-      }
-    }
-    
-    const handleCheckOut = async () => {
-      try {
-        loading.value.checkOut = true
-        const response = await employeeService.checkOut()
-        todayAttendance.value = response.attendance
-        
-        // Refresh stats
-        await loadDashboardData()
-        
-      } catch (error) {
-        console.error('Error checking out:', error)
-      } finally {
-        loading.value.checkOut = false
-      }
-    }
-    
-    const formatDate = (date) => {
-      return employeeService.formatDate(date)
-    }
-    
-    const formatTime = (time) => {
-      return employeeService.formatTime(time)
-    }
-    
-    const formatCurrency = (amount) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      }).format(amount || 0)
-    }
-    
-    const getAttendanceStatusClass = (status) => {
-      return employeeService.getAttendanceStatusColor(status)
-    }
-    
-    const getLeaveStatusClass = (status) => {
-      return employeeService.getLeaveStatusColor(status)
-    }
+    const employeeStore = useEmployeeStore()
     
     // Lifecycle
     onMounted(() => {
-      loadDashboardData()
+      employeeStore.initializeDashboard()
     })
     
     return {
+      // Stores
       authStore,
-      loading,
-      stats,
-      todayAttendance,
-      recentLeaves,
-      handleCheckIn,
-      handleCheckOut,
-      formatDate,
-      formatTime,
-      formatCurrency,
-      getAttendanceStatusClass,
-      getLeaveStatusClass
+      
+      // Store state as computed properties for reactivity
+      loading: computed(() => employeeStore.loading.dashboard),
+      stats: computed(() => employeeStore.dashboardStats),
+      todayAttendance: computed(() => employeeStore.todayAttendance),
+      recentLeaves: computed(() => employeeStore.leaves),
+      message: computed(() => employeeStore.message),
+      messageType: computed(() => employeeStore.messageType),
+      
+      // Store actions
+      handleCheckIn: employeeStore.handleCheckIn,
+      handleCheckOut: employeeStore.handleCheckOut,
+      formatDate: employeeStore.formatDate,
+      formatTime: employeeStore.formatTime,
+      formatCurrency: () => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(0)
+      },
+      getAttendanceStatusClass: employeeStore.getAttendanceStatusClass,
+      getLeaveStatusClass: employeeStore.getLeaveStatusClass
     }
   }
 }
