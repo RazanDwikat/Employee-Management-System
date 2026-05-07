@@ -1,65 +1,75 @@
 <template>
   <div class="manager-dashboard">
     <h1>Manager Dashboard</h1>
-    <div class="stats-grid">
-      <div class="stat-card">
-        <h3>Team Members</h3>
-        <p class="stat-number">{{ stats.teamMembers }}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Pending Leave Requests</h3>
-        <p class="stat-number">{{ stats.pendingLeaves }}</p>
-      </div>
-      <div class="stat-card">
-        <h3>This Month Attendance</h3>
-        <p class="stat-number">{{ stats.attendanceRate }}%</p>
-      </div>
+    
+    <!-- Loading State -->
+    <div v-if="loading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Loading dashboard data...</p>
     </div>
     
-    <div class="recent-activities">
-      <h3>Recent Activities</h3>
-      <div class="activity-list">
-        <div v-for="activity in recentActivities" :key="activity.id" class="activity-item">
-          <span class="activity-time">{{ activity.time }}</span>
-          <span class="activity-text">{{ activity.text }}</span>
+    <!-- Dashboard Content -->
+    <div v-else>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3>Team Members</h3>
+          <p class="stat-number">{{ stats.teamMembers }}</p>
         </div>
+        <div class="stat-card">
+          <h3>Pending Leave Requests</h3>
+          <p class="stat-number">{{ stats.pendingLeaves }}</p>
+        </div>
+        <div class="stat-card">
+          <h3>This Month Attendance</h3>
+          <p class="stat-number">{{ stats.attendanceRate }}%</p>
+        </div>
+      </div>
+    
+    <div class="recent-activities">
+        <h3>Recent Activities</h3>
+        <div class="activity-list">
+          <div v-for="activity in recentActivities" :key="activity.id" class="activity-item">
+            <span class="activity-time">{{ activity.time }}</span>
+            <span class="activity-text">{{ activity.text }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Success/Error Messages -->
+      <div v-if="message" class="message" :class="messageType">
+        {{ message }}
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
+import { useManagerStore } from '@/stores/managerStore'
 
 export default {
   name: 'ManagerDashboard',
   setup() {
-    const stats = ref({
-      teamMembers: 0,
-      pendingLeaves: 0,
-      attendanceRate: 0
-    })
-    
-    const recentActivities = ref([])
+    const managerStore = useManagerStore()
     
     onMounted(() => {
-      // TODO: Fetch actual data from API
-      stats.value = {
-        teamMembers: 12,
-        pendingLeaves: 3,
-        attendanceRate: 94
-      }
+      // Load dashboard stats from store
+      managerStore.loadDashboardStats()
+    })
+    
+    return {
+      // Store state as computed properties for reactivity
+      stats: computed(() => managerStore.dashboardStats),
+      loading: computed(() => managerStore.loading.dashboard),
+      message: computed(() => managerStore.message),
+      messageType: computed(() => managerStore.messageType),
       
-      recentActivities.value = [
+      // Recent activities (static data for now)
+      recentActivities: [
         { id: 1, time: '2 hours ago', text: 'John Doe submitted leave request' },
         { id: 2, time: '4 hours ago', text: 'Jane Smith marked attendance' },
         { id: 3, time: '1 day ago', text: 'Team meeting scheduled for tomorrow' }
       ]
-    })
-    
-    return {
-      stats,
-      recentActivities
     }
   }
 }
@@ -136,5 +146,50 @@ h1 {
 
 .activity-text {
   color: #333;
+}
+
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #27ae60;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Messages */
+.message {
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  font-weight: 500;
+}
+
+.message.success {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.message.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
 }
 </style>

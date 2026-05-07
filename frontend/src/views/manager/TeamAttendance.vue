@@ -164,16 +164,14 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import managerService from '../../services/managerService'
+import { useManagerStore } from '@/stores/managerStore'
 
 export default {
   name: 'TeamAttendance',
   setup() {
-    // Reactive data
-    const loading = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    const attendanceRecords = ref([])
+    const managerStore = useManagerStore()
+    
+    // Local reactive data for pagination and filters
     const pagination = ref({
       current_page: 1,
       last_page: 1,
@@ -181,78 +179,46 @@ export default {
       total: 0
     })
     
-    const filters = ref({
-      date: new Date().toISOString().split('T')[0], // Today's date
-      status: ''
-    })
+    const filters = computed(() => managerStore.attendanceFilters)
     
-    const stats = ref({
-      totalEmployees: 0,
-      present: 0,
-      absent: 0,
-      late: 0
+    // Stats using store getter
+    const stats = computed(() => {
+      const attendanceStats = managerStore.attendanceStats
+      return {
+        totalEmployees: attendanceStats.totalEmployees,
+        present: attendanceStats.present,
+        absent: attendanceStats.absent,
+        late: attendanceStats.late
+      }
     })
     
     // Methods
     const loadTeamAttendance = async (page = 1) => {
       try {
-        loading.value = true
+        // Update store filters with current filters
+        managerStore.attendanceFilters.date = filters.value.date
+        managerStore.attendanceFilters.status = filters.value.status
         
-        const params = {
-          page,
-          ...filters.value
+        await managerStore.loadTeamAttendance()
+        
+        if (managerStore.teamAttendance.meta) {
+          pagination.value = managerStore.teamAttendance.meta
         }
-        
-        const response = await managerService.getTeamAttendance(params)
-        attendanceRecords.value = response.data || []
-        
-        if (response.meta) {
-          pagination.value = response.meta
-        }
-        
-        // Calculate stats
-        calculateStats()
         
       } catch (error) {
         console.error('Error loading team attendance:', error)
-        showMessage('Error loading team attendance', 'error')
-      } finally {
-        loading.value = false
-      }
-    }
-    
-    const calculateStats = () => {
-      const today = filters.value.date
-      const todayRecords = attendanceRecords.value.filter(record => record.date === today)
-      
-      stats.value = {
-        totalEmployees: new Set(attendanceRecords.value.map(r => r.employee_id)).size,
-        present: todayRecords.filter(r => r.status === 'present').length,
-        absent: todayRecords.filter(r => r.status === 'absent').length,
-        late: todayRecords.filter(r => r.status === 'late').length
+        managerStore.showMessage('Error loading team attendance', 'error')
       }
     }
     
     const resetFilters = () => {
-      filters.value = {
-        date: new Date().toISOString().split('T')[0],
-        status: ''
-      }
+      managerStore.resetAttendanceFilters()
       loadTeamAttendance()
     }
     
     const exportData = () => {
       // TODO: Implement export functionality
-      showMessage('Export feature coming soon!', 'info')
-    }
-    
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
+      managerStore.showMessage('Export feature coming soon!', 'info')
     }
     
     const getInitials = (name) => {
@@ -266,23 +232,11 @@ export default {
     }
     
     const formatDate = (dateString) => {
-      if (!dateString) return 'N/A'
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      return managerStore.formatDate(dateString)
     }
     
     const getStatusClass = (status) => {
-      const statusClasses = {
-        present: 'status-present',
-        absent: 'status-absent',
-        late: 'status-late',
-        half_day: 'status-half-day'
-      }
-      return statusClasses[status] || 'status-default'
+      return managerStore.getAttendanceStatusColor(status)
     }
     
     const calculateWorkingHours = (record) => {
@@ -297,17 +251,26 @@ export default {
     
     // Lifecycle
     onMounted(() => {
+      // Initialize filters with today's date
+      managerStore.attendanceFilters.date = new Date().toISOString().split('T')[0]
       loadTeamAttendance()
     })
     
     return {
-      loading,
-      message,
-      messageType,
-      attendanceRecords,
+      // Store state as computed properties for reactivity
+      loading: computed(() => managerStore.loading.attendance),
+      message: computed(() => managerStore.message),
+      messageType: computed(() => managerStore.messageType),
+      attendanceRecords: computed(() => managerStore.teamAttendance),
+      
+      // Local state
       pagination,
-      filters,
+      
+      // Computed properties
       stats,
+      filters,
+      
+      // Methods
       loadTeamAttendance,
       resetFilters,
       exportData,

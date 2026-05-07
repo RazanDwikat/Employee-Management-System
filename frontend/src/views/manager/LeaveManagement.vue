@@ -340,7 +340,7 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import managerService from '../../services/managerService'
+import { useManagerStore } from '@/stores/managerStore'
 import AppMessage from '../../components/common/AppMessage.vue'
 
 export default {
@@ -349,11 +349,9 @@ export default {
     AppMessage
   },
   setup() {
-    // Reactive data
-    const loading = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    const leaves = ref([])
+    const managerStore = useManagerStore()
+    
+    // Local reactive data for modals and filters
     const statusFilter = ref('')
     const monthFilter = ref('')
     
@@ -372,20 +370,21 @@ export default {
     ])
     
     const pendingLeaves = computed(() => {
-      return leaves.value.filter(leave => leave.status === 'pending')
+      if (!Array.isArray(managerStore.departmentLeaves)) return []
+      return managerStore.departmentLeaves.filter(leave => leave.status === 'pending')
     })
     
     const approvedCount = computed(() => {
-      return leaves.value.filter(leave => leave.status === 'approved').length
+      return managerStore.approvedCount
     })
     
     const rejectedCount = computed(() => {
-      return leaves.value.filter(leave => leave.status === 'rejected').length
+      return managerStore.rejectedCount
     })
     
     const onLeaveCount = computed(() => {
       const now = new Date()
-      return leaves.value.filter(leave => 
+      return managerStore.departmentLeaves.filter(leave => 
         leave.status === 'approved' &&
         new Date(leave.start_date) <= now &&
         new Date(leave.end_date) >= now
@@ -393,7 +392,7 @@ export default {
     })
     
     const filteredLeaves = computed(() => {
-      let filtered = leaves.value
+      let filtered = managerStore.departmentLeaves
       
       if (statusFilter.value) {
         filtered = filtered.filter(leave => leave.status === statusFilter.value)
@@ -412,16 +411,10 @@ export default {
     // Methods
     const loadLeaves = async () => {
       try {
-        loading.value = true
-        
-        const response = await managerService.getPendingLeaves()
-        leaves.value = response.data || []
-        
+        await managerStore.loadDepartmentLeaves()
       } catch (error) {
         console.error('Error loading leaves:', error)
-        showMessage('Error loading leave requests', 'error')
-      } finally {
-        loading.value = false
+        managerStore.showMessage('Error loading leave requests', 'error')
       }
     }
     
@@ -456,40 +449,27 @@ export default {
     
     const approveLeave = async () => {
       try {
-        await managerService.updateLeaveStatus(selectedLeave.value.id, 'approved', approveComments.value)
+        await managerStore.updateLeaveStatus(selectedLeave.value.id, 'approved', approveComments.value)
         
-        // Update local data
-        const leaveIndex = leaves.value.findIndex(leave => leave.id === selectedLeave.value.id)
-        if (leaveIndex !== -1) {
-          leaves.value[leaveIndex].status = 'approved'
-        }
-        
-        showMessage('Leave request approved successfully!', 'success')
+        managerStore.showMessage('Leave request approved successfully!', 'success')
         closeApproveModal()
         
       } catch (error) {
         console.error('Error approving leave:', error)
-        showMessage('Error approving leave request', 'error')
+        managerStore.showMessage('Error approving leave request', 'error')
       }
     }
     
     const rejectLeave = async () => {
       try {
-        await managerService.updateLeaveStatus(selectedLeave.value.id, 'rejected', rejectReason.value)
+        await managerStore.updateLeaveStatus(selectedLeave.value.id, 'rejected', rejectReason.value)
         
-        // Update local data
-        const leaveIndex = leaves.value.findIndex(leave => leave.id === selectedLeave.value.id)
-        if (leaveIndex !== -1) {
-          leaves.value[leaveIndex].status = 'rejected'
-          leaves.value[leaveIndex].rejection_reason = rejectReason.value
-        }
-        
-        showMessage('Leave request rejected', 'success')
+        managerStore.showMessage('Leave request rejected', 'success')
         closeRejectModal()
         
       } catch (error) {
         console.error('Error rejecting leave:', error)
-        showMessage('Error rejecting leave request', 'error')
+        managerStore.showMessage('Error rejecting leave request', 'error')
       }
     }
     
@@ -505,15 +485,6 @@ export default {
       showDetailsModal.value = true
     }
     
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
-    }
-    
     const getInitials = (name) => {
       if (!name) return 'U'
       return name
@@ -525,17 +496,11 @@ export default {
     }
     
     const formatDate = (dateString) => {
-      if (!dateString) return 'N/A'
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
+      return managerStore.formatDate(dateString)
     }
     
     const getStatusClass = (status) => {
-      return managerService.getLeaveStatusColor(status)
+      return managerStore.getLeaveStatusColor(status)
     }
     
     // Lifecycle
@@ -544,10 +509,13 @@ export default {
     })
     
     return {
-      loading,
-      message,
-      messageType,
-      leaves,
+      // Store state as computed properties for reactivity
+      loading: computed(() => managerStore.loading.leaves),
+      message: computed(() => managerStore.message),
+      messageType: computed(() => managerStore.messageType),
+      leaves: computed(() => managerStore.departmentLeaves),
+      
+      // Local state
       statusFilter,
       monthFilter,
       showApproveModal,
@@ -556,12 +524,16 @@ export default {
       selectedLeave,
       approveComments,
       rejectReason,
+      
+      // Computed properties
       months,
       pendingLeaves,
       approvedCount,
       rejectedCount,
       onLeaveCount,
       filteredLeaves,
+      
+      // Methods
       loadLeaves,
       openApproveModal,
       closeApproveModal,

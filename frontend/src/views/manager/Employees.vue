@@ -320,9 +320,9 @@
 
 <script>
 import { ref, onMounted, computed } from 'vue'
-import managerService from '../../services/managerService'
-import AppMessage from '../../components/common/AppMessage.vue'
+import { useManagerStore } from '@/stores/managerStore'
 import { useAuthStore } from '../../stores/auth'
+import AppMessage from '../../components/common/AppMessage.vue'
 
 export default {
   name: 'ManagerEmployees',
@@ -330,27 +330,23 @@ export default {
     AppMessage
   },
   setup() {
-    // Reactive data
-    const loading = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
-    const employees = ref([])
-    const searchQuery = ref('')
+    const managerStore = useManagerStore()
+    const authStore = useAuthStore()
+    
+    // Local reactive data for modals
     const showModal = ref(false)
     const showDetailsModal = ref(false)
     const showAssignmentModal = ref(false)
     const selectedEmployee = ref(null)
     const selectedSchedule = ref(null)
-    const availableSchedules = ref([])
-    const availableEmployees = ref([])
-    const loadingAssignment = ref(false)
+    const searchQuery = ref('')
     
     // Computed properties
     const filteredEmployees = computed(() => {
-      if (!searchQuery.value) return employees.value
+      if (!searchQuery.value) return managerStore.employees
       
       const query = searchQuery.value.toLowerCase()
-      return employees.value.filter(employee => 
+      return managerStore.employees.filter(employee => 
         employee.user?.name?.toLowerCase().includes(query) ||
         employee.user?.email?.toLowerCase().includes(query) ||
         employee.employee_number?.toLowerCase().includes(query)
@@ -358,52 +354,26 @@ export default {
     })
     
     const presentCount = computed(() => {
-      return employees.value.filter(emp => 
-        emp.attendances?.some(att => 
-          att.date === new Date().toISOString().split('T')[0] && 
-          att.status === 'present'
-        )
-      ).length
+      return managerStore.presentCount
     })
     
     const onLeaveCount = computed(() => {
-      return employees.value.filter(emp => 
-        emp.leaves?.some(leave => 
-          leave.status === 'approved' &&
-          new Date(leave.start_date) <= new Date() &&
-          new Date(leave.end_date) >= new Date()
-        )
-      ).length
+      return managerStore.onLeaveCount
     })
     
     // Methods
     const loadEmployees = async () => {
       try {
-        loading.value = true
-        
-        const response = await managerService.getEmployees()
-        employees.value = response.employees || []
-        
+        await managerStore.loadEmployees()
       } catch (error) {
         console.error('Error loading employees:', error)
-        showMessage('Error loading team members', 'error')
-      } finally {
-        loading.value = false
+        managerStore.showMessage('Error loading team members', 'error')
       }
     }
     
     const loadSchedules = async () => {
       try {
-        const response = await managerService.getWorkSchedules()
-        
-        // Handle different response structures
-        if (response.data) {
-          availableSchedules.value = response.data
-        } else if (response.schedules) {
-          availableSchedules.value = response.schedules
-        } else {
-          availableSchedules.value = response || []
-        }
+        await managerStore.loadWorkSchedules()
       } catch (error) {
         console.error('Error loading schedules:', error)
       }
@@ -433,20 +403,14 @@ export default {
     
     const updateSchedule = async () => {
       try {
-        const response = await managerService.updateEmployeeSchedule(selectedEmployee.value.id, selectedSchedule.value)
+        await managerStore.updateEmployeeSchedule(selectedEmployee.value.id, selectedSchedule.value)
         
-        // Update local data with backend response
-        const employeeIndex = employees.value.findIndex(emp => emp.id === selectedEmployee.value.id)
-        if (employeeIndex !== -1) {
-          employees.value[employeeIndex] = response.employee
-        }
-        
-        showMessage('Work schedule updated successfully!', 'success')
+        managerStore.showMessage('Work schedule updated successfully!', 'success')
         closeModal()
         
       } catch (error) {
         console.error('Error updating schedule:', error)
-        showMessage('Error updating work schedule', 'error')
+        managerStore.showMessage('Error updating work schedule', 'error')
       }
     }
     
@@ -456,28 +420,15 @@ export default {
       }
       
       try {
-        await managerService.removeEmployee(employee.id)
-        
-        // Remove from local data
-        employees.value = employees.value.filter(emp => emp.id !== employee.id)
-        
-        showMessage('Employee removed from department', 'success')
+        await managerStore.removeEmployee(employee.id)
         
       } catch (error) {
         console.error('Error removing employee:', error)
-        showMessage('Error removing employee', 'error')
+        managerStore.showMessage('Error removing employee', 'error')
       }
     }
     
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
-    }
-    
+        
     const getInitials = (name) => {
       if (!name) return 'U'
       return name
@@ -517,61 +468,35 @@ export default {
     // Assignment modal methods
     const openAssignmentModal = async () => {
       try {
-        loadingAssignment.value = true
         showAssignmentModal.value = true
         
-        const response = await managerService.getEmployeesForAssignment()
-        availableEmployees.value = response.employees || []
-        
-        // Convert to array if it's not already
-        if (!Array.isArray(availableEmployees.value)) {
-          availableEmployees.value = Object.values(availableEmployees.value)
-        }
+        await managerStore.loadEmployeesForAssignment()
         
       } catch (error) {
         console.error('Error loading employees for assignment:', error)
-        showMessage('Error loading available employees', 'error')
-      } finally {
-        loadingAssignment.value = false
+        managerStore.showMessage('Error loading available employees', 'error')
       }
     }
     
     const closeAssignmentModal = () => {
       showAssignmentModal.value = false
-      availableEmployees.value = []
     }
     
     // Assign employee from modal
     const assignEmployee = async (employee) => {
       try {
-        const authStore = useAuthStore()
-        const response = await managerService.assignEmployee(employee.id)
+        await managerStore.assignEmployee(employee.id)
         
-        // Add employee to current employees list
-        employees.value.push({
-          ...employee,
-          department_id: authStore.user.employee.department_id,
-          department: {
-            name: authStore.user.employee.department?.name || 'Department'
-          }
-        })
-        
-        // Remove from available employees
-        const index = availableEmployees.value.findIndex(emp => emp.id === employee.id)
-        if (index !== -1) {
-          availableEmployees.value.splice(index, 1)
-        }
-        
-        showMessage(`${employee.user?.name} assigned to your department successfully!`, 'success')
+        managerStore.showMessage(`${employee.user?.name} assigned to your department successfully!`, 'success')
         
         // Close modal if no more employees available
-        if (availableEmployees.value.length === 0) {
+        if (managerStore.employeesForAssignment.length === 0) {
           closeAssignmentModal()
         }
         
       } catch (error) {
         console.error('Error assigning employee:', error)
-        showMessage(error.response?.data?.message || 'Error assigning employee', 'error')
+        managerStore.showMessage(error.response?.data?.message || 'Error assigning employee', 'error')
       }
     }
     
@@ -582,26 +507,36 @@ export default {
     })
     
     return {
-      loading,
-      message,
-      messageType,
-      employees,
+      // Store state as computed properties for reactivity
+      loading: computed(() => managerStore.loading.employees),
+      message: computed(() => managerStore.message),
+      messageType: computed(() => managerStore.messageType),
+      employees: computed(() => managerStore.employees),
+      availableSchedules: computed(() => managerStore.workSchedules),
+      availableEmployees: computed(() => managerStore.employeesForAssignment),
+      loadingAssignment: computed(() => managerStore.loading.assignment),
+      
+      // Local state
       searchQuery,
       showModal,
       showDetailsModal,
       showAssignmentModal,
       selectedEmployee,
       selectedSchedule,
-      availableSchedules,
-      availableEmployees,
-      loadingAssignment,
+      
+      // Computed properties
       filteredEmployees,
       presentCount,
       onLeaveCount,
+      
+      // Methods
       loadEmployees,
+      loadSchedules,
       viewEmployeeDetails,
       showScheduleModal,
       closeModal,
+      closeDetailsModal,
+      updateSchedule,
       closeDetailsModal,
       updateSchedule,
       removeEmployee,
