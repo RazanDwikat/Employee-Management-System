@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: ems_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: employee_management_system
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_PASSWORD: userpassword
+      MYSQL_USER: dbuser
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - ems_network
+
+  # Laravel Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ems_backend
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: employee_management_system
+      DB_USERNAME: dbuser
+      DB_PASSWORD: userpassword
+    networks:
+      - ems_network
+
+  # Vue.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ems_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - ems_network
+
+volumes:
+  dbdata:
+
+networks:
+  ems_network:
+    driver: bridge
