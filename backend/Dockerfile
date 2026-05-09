@@ -22,19 +22,31 @@ WORKDIR /var/www/html
 COPY . /var/www/html
 
 # Install PHP dependencies
-RUN composer install --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader
 
-# Copy Apache configuration
+# Enable Apache rewrite
 RUN a2enmod rewrite
-RUN sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
+
+# 🔥 هون أهم تعديل
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/sites-available/*.conf
+
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/apache2.conf \
+    /etc/apache2/conf-available/*.conf
+
+# Apache config
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html
-RUN chmod -R 755 /var/www/html/storage
-RUN chmod -R 755 /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage
+RUN chmod -R 775 /var/www/html/bootstrap/cache
 
 # Expose port
-EXPOSE 8000
+EXPOSE 80
 
 # Start Apache
 CMD ["apache2-foreground"]
