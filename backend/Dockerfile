@@ -26,7 +26,7 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Enable Apache rewrite
 RUN a2enmod rewrite
-
+RUN a2dismod mpm_event mpm_worker && a2enmod mpm_prefork
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
@@ -45,7 +45,7 @@ RUN mkdir -p /var/www/html/storage/logs \
              /var/www/html/storage/framework/views \
              /var/www/html/bootstrap/cache
 
-             
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html
 RUN chmod -R 775 /var/www/html/storage
