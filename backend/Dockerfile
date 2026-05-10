@@ -39,6 +39,13 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
 # Apache config
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
+RUN mkdir -p /var/www/html/storage/logs \
+             /var/www/html/storage/framework/cache \
+             /var/www/html/storage/framework/sessions \
+             /var/www/html/storage/framework/views \
+             /var/www/html/bootstrap/cache
+
+             
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html
 RUN chmod -R 775 /var/www/html/storage
