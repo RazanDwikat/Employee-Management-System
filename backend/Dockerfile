@@ -27,7 +27,6 @@ RUN composer install --no-dev --optimize-autoloader
 # Enable Apache rewrite
 RUN a2enmod rewrite
 
-# 🔥 هون أهم تعديل
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
@@ -45,8 +44,11 @@ RUN chown -R www-data:www-data /var/www/html
 RUN chmod -R 775 /var/www/html/storage
 RUN chmod -R 775 /var/www/html/bootstrap/cache
 
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose port
 EXPOSE 80
 
 # Start Apache
-CMD ["apache2-foreground"]
+CMD ["/entrypoint.sh"]
