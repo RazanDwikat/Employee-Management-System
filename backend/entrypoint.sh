@@ -27,14 +27,13 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 EOF
 
-
 php artisan key:generate --force
-
-
 php artisan config:cache
 php artisan route:cache
-
-
 php artisan migrate --force
+
+
+a2dismod mpm_event mpm_worker 2>/dev/null || true
+a2enmod mpm_prefork 2>/dev/null || true
 
 apache2-foreground
