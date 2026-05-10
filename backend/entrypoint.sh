@@ -18,8 +18,12 @@ DB_DATABASE=${DB_DATABASE}
 DB_USERNAME=${DB_USERNAME}
 DB_PASSWORD=${DB_PASSWORD}
 
+JWT_SECRET=${JWT_SECRET}
+
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
+
+JWT_SECRET=${JWT_SECRET}
 
 CACHE_STORE=database
 QUEUE_CONNECTION=database
@@ -32,7 +36,7 @@ php artisan config:cache
 php artisan route:cache
 php artisan migrate --force
 
-
+php artisan db:seed --class=UserSeeder --force
 a2dismod mpm_event mpm_worker 2>/dev/null || true
 a2enmod mpm_prefork 2>/dev/null || true
 
