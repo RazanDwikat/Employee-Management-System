@@ -78,6 +78,19 @@ export default {
   overflow-y: auto;
 }
 
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .sidebar-content {
+    width: 85%;
+    max-width: 280px;
+    left: -100%;
+  }
+  
+  .mobile-sidebar.is-open .sidebar-content {
+    left: 0;
+  }
+}
+
 .mobile-sidebar.is-open .sidebar-content {
   left: 0;
 }
@@ -93,6 +106,17 @@ export default {
 .sidebar-header h3 {
   margin: 0;
   font-size: 20px;
+}
+
+/* Mobile header adjustments */
+@media (max-width: 480px) {
+  .sidebar-header {
+    padding: 15px;
+  }
+  
+  .sidebar-header h3 {
+    font-size: 18px;
+  }
 }
 
 .close-btn {
@@ -146,6 +170,14 @@ export default {
   text-decoration: none;
   transition: background-color 0.3s;
   font-size: 14px;
+}
+
+/* Mobile link adjustments */
+@media (max-width: 480px) {
+  .nav-link {
+    padding: 14px 15px;
+    font-size: 16px;
+  }
 }
 
 .nav-link:hover,
