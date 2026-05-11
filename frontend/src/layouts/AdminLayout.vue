@@ -1,5 +1,60 @@
 <template>
   <div class="admin-layout">
+    <!-- Mobile Sidebar -->
+    <MobileSidebar :is-open="isMobileSidebarOpen" @close="closeMobileSidebar">
+      <li>
+        <router-link to="/admin/dashboard" class="nav-link" @click="closeMobileSidebar">
+          Dashboard
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/users" class="nav-link" @click="closeMobileSidebar">
+          Users
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/departments" class="nav-link" @click="closeMobileSidebar">
+          Departments
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/leave-types" class="nav-link" @click="closeMobileSidebar">
+          Leave Types
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/leave-requests" class="nav-link" @click="closeMobileSidebar">
+          Leave Requests
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/work-schedules" class="nav-link" @click="closeMobileSidebar">
+          Work Schedules
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/payroll-rules" class="nav-link" @click="closeMobileSidebar">
+          Payroll Rules
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/salary-management" class="nav-link" @click="closeMobileSidebar">
+          Salary Management
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/reports" class="nav-link" @click="closeMobileSidebar">
+          Reports
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/admin/profile" class="nav-link" @click="closeMobileSidebar">
+          Profile
+        </router-link>
+      </li>
+    </MobileSidebar>
+    
+    <!-- Desktop Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-header">
         <h3>Admin Panel</h3>
@@ -8,52 +63,52 @@
       <ul class="nav-menu">
         <li>
           <router-link to="/admin/dashboard" class="nav-link">
-            <i class="icon">Dashboard</i>
+            Dashboard
           </router-link>
         </li>
         <li>
           <router-link to="/admin/users" class="nav-link">
-            <i class="icon">Users</i>
+            Users
           </router-link>
         </li>
         <li>
           <router-link to="/admin/departments" class="nav-link">
-            <i class="icon">Departments</i>
+            Departments
           </router-link>
         </li>
         <li>
           <router-link to="/admin/leave-types" class="nav-link">
-            <i class="icon">Leave Types</i>
+            Leave Types
           </router-link>
         </li>
         <li>
           <router-link to="/admin/leave-requests" class="nav-link">
-            <i class="icon">Leave Requests</i>
+            Leave Requests
           </router-link>
         </li>
         <li>
           <router-link to="/admin/work-schedules" class="nav-link">
-            <i class="icon">Work Schedules</i>
+            Work Schedules
           </router-link>
         </li>
         <li>
           <router-link to="/admin/payroll-rules" class="nav-link">
-            <i class="icon">Payroll Rules</i>
+            Payroll Rules
           </router-link>
         </li>
         <li>
           <router-link to="/admin/salary-management" class="nav-link">
-            <i class="icon">Salary Management</i>
+            Salary Management
           </router-link>
         </li>
         <li>
           <router-link to="/admin/reports" class="nav-link">
-            <i class="icon">Reports</i>
+            Reports
           </router-link>
         </li>
         <li>
           <router-link to="/admin/profile" class="nav-link">
-            <i class="icon">Profile</i>
+            Profile
           </router-link>
         </li>
       </ul>
@@ -61,6 +116,9 @@
     
     <main class="main-content">
       <header class="top-bar">
+        <button class="menu-toggle" @click="toggleMobileSidebar">
+          ☰
+        </button>
         <div class="user-info">
           <span>Welcome, {{ authStore.user?.name }}</span>
           <button @click="handleLogout" class="logout-btn">Logout</button>
@@ -77,21 +135,52 @@
 <script>
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
+import MobileSidebar from '../components/MobileSidebar.vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 export default {
   name: 'AdminLayout',
+  components: {
+    MobileSidebar
+  },
   setup() {
     const authStore = useAuthStore()
     const router = useRouter()
+    const isMobileSidebarOpen = ref(false)
     
     const handleLogout = () => {
       authStore.logout()
       router.push('/login')
     }
     
+    const toggleMobileSidebar = () => {
+      isMobileSidebarOpen.value = !isMobileSidebarOpen.value
+    }
+    
+    const closeMobileSidebar = () => {
+      isMobileSidebarOpen.value = false
+    }
+    
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        isMobileSidebarOpen.value = false
+      }
+    }
+    
+    onMounted(() => {
+      window.addEventListener('resize', handleResize)
+    })
+    
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize)
+    })
+    
     return {
       authStore,
-      handleLogout
+      handleLogout,
+      isMobileSidebarOpen,
+      toggleMobileSidebar,
+      closeMobileSidebar
     }
   }
 }
@@ -101,23 +190,30 @@ export default {
 .admin-layout {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 50%, #f1f5f9 100%);
 }
 
+/* Mobile Menu Toggle */
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  color: #333;
+}
+
+/* Desktop Sidebar */
 .sidebar {
   width: 250px;
   background: #3d7d73;
   color: white;
   padding: 20px;
-  border-right: 1px solid #2e6359;
-  box-shadow: 2px 0 4px rgba(0,0,0,0.02);
 }
 
 .sidebar-header h3 {
   margin-bottom: 30px;
   font-size: 20px;
-  font-weight: 400;
-  color: white;
 }
 
 .nav-menu {
@@ -126,62 +222,56 @@ export default {
 }
 
 .nav-menu li {
-  margin-bottom: 10px;
+  margin-bottom: 2px;
 }
 
 .nav-link {
   display: block;
-  padding: 12px 15px;
+  padding: 10px;
   color: white;
   text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  font-weight: 500;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  font-size: 14px;
 }
 
 .nav-link:hover,
 .nav-link.router-link-active {
-  background: #2e6359;
-  color: white;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .main-content {
   flex: 1;
-  background: transparent;
+  background: #f5f5f5;
 }
 
 .top-bar {
-  background: #3d7d73;
+  background: white;
   padding: 15px 30px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #2e6359;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   gap: 15px;
-  color: white;
-  font-weight: 500;
 }
 
 .logout-btn {
-  background: #FFE2E2;
-  color: #2c3e50;
-  border: 1px solid #F6F6F6;
+  background: #dc3545;
+  color: white;
+  border: none;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  transition: background 0.3s;
 }
 
 .logout-btn:hover {
-  background: #F6F6F6;
-  transform: translateY(-1px);
+  background: #c82333;
 }
 
 .content-area {

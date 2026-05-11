@@ -1,5 +1,59 @@
 <template>
   <div class="manager-layout">
+    <!-- Mobile Sidebar -->
+    <MobileSidebar :is-open="isMobileSidebarOpen" @close="closeMobileSidebar">
+      <!-- Employee Functions -->
+      <li class="nav-section">
+        <span class="nav-section-title">My Work</span>
+      </li>
+      <li>
+        <router-link to="/manager/dashboard" class="nav-link" @click="closeMobileSidebar">
+          Dashboard
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/manager/profile" class="nav-link" @click="closeMobileSidebar">
+          My Profile
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/manager/attendance" class="nav-link" @click="closeMobileSidebar">
+          Attendance
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/manager/leaves" class="nav-link" @click="closeMobileSidebar">
+          Leave Requests
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/manager/salaries" class="nav-link" @click="closeMobileSidebar">
+          My Salaries
+        </router-link>
+      </li>
+      
+      <!-- Manager Functions -->
+      <li class="nav-section">
+        <span class="nav-section-title">Team Management</span>
+      </li>
+      <li>
+        <router-link to="/manager/employees" class="nav-link" @click="closeMobileSidebar">
+          Team Members
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/manager/leave-management" class="nav-link" @click="closeMobileSidebar">
+          Leave Management
+        </router-link>
+      </li>
+      <li>
+        <router-link to="/manager/team-attendance" class="nav-link" @click="closeMobileSidebar">
+          Team Attendance
+        </router-link>
+      </li>
+    </MobileSidebar>
+    
+    <!-- Desktop Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-header">
         <h3>Manager Panel</h3>
@@ -60,6 +114,9 @@
     
     <main class="main-content">
       <header class="top-bar">
+        <button class="menu-toggle" @click="toggleMobileSidebar">
+          ☰
+        </button>
         <div class="user-info">
           <span>Welcome, {{ authStore.user?.name }}</span>
           <button @click="handleLogout" class="logout-btn">Logout</button>
@@ -76,12 +133,18 @@
 <script>
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
+import MobileSidebar from '../components/MobileSidebar.vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 export default {
   name: 'ManagerLayout',
+  components: {
+    MobileSidebar
+  },
   setup() {
     const authStore = useAuthStore()
     const router = useRouter()
+    const isMobileSidebarOpen = ref(false)
     
     const handleLogout = async () => {
       try {
@@ -92,9 +155,34 @@ export default {
       }
     }
     
+    const toggleMobileSidebar = () => {
+      isMobileSidebarOpen.value = !isMobileSidebarOpen.value
+    }
+    
+    const closeMobileSidebar = () => {
+      isMobileSidebarOpen.value = false
+    }
+    
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        isMobileSidebarOpen.value = false
+      }
+    }
+    
+    onMounted(() => {
+      window.addEventListener('resize', handleResize)
+    })
+    
+    onUnmounted(() => {
+      window.removeEventListener('resize', handleResize)
+    })
+    
     return {
       authStore,
-      handleLogout
+      handleLogout,
+      isMobileSidebarOpen,
+      toggleMobileSidebar,
+      closeMobileSidebar
     }
   }
 }
@@ -106,6 +194,18 @@ export default {
   min-height: 100vh;
 }
 
+/* Mobile Menu Toggle */
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 8px;
+  color: #333;
+}
+
+/* Desktop Sidebar */
 .sidebar {
   width: 250px;
   background: #3d7d73;
@@ -153,7 +253,7 @@ export default {
 
 .nav-link:hover,
 .nav-link.router-link-active {
-  background: #3d7d73;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .main-content {
@@ -166,7 +266,7 @@ export default {
   padding: 15px 30px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -177,15 +277,62 @@ export default {
 }
 
 .logout-btn {
-  background: #faeae9;
+  background: #dc3545;
   color: white;
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
+  transition: background 0.3s;
+}
+
+.logout-btn:hover {
+  background: #c82333;
 }
 
 .content-area {
   padding: 30px;
+}
+
+/* Responsive Design */
+@media (max-width: 767px) {
+  .menu-toggle {
+    display: block;
+  }
+  
+  .sidebar {
+    display: none;
+  }
+  
+  .top-bar {
+    padding: 15px 20px;
+  }
+  
+  .user-info {
+    gap: 10px;
+  }
+  
+  .user-info span {
+    display: none;
+  }
+  
+  .content-area {
+    padding: 20px 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .top-bar {
+    padding: 10px 15px;
+  }
+  
+  .logout-btn {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  
+  .content-area {
+    padding: 15px 10px;
+  }
 }
 </style>
