@@ -10,6 +10,12 @@ class UserSeeder extends Seeder
 {
     public function run()
     {
+        // Clear existing users first
+        DB::table('users')->delete();
+        
+        // Reset auto-increment
+        DB::statement('ALTER TABLE users AUTO_INCREMENT = 1');
+        
         // Create admin user
         DB::table('users')->insert([
             'name' => 'Razan Dwekat',
