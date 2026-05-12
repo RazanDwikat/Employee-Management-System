@@ -1,183 +1,210 @@
-# Employee Management System (EMS)
+# Employee Management System (EMS) 🏢
 
-A comprehensive Laravel RESTful API with Vue.js frontend designed to manage employees, departments, attendance, leaves, and payroll within an organization.
+## 📖 About The Project
 
----
+Employee Management System is a comprehensive web application designed to help organizations manage their workforce efficiently. Built with modern technologies, this system provides a complete solution for employee administration, attendance tracking, leave management, and payroll processing.
 
-## 🚀 Overview
+### � What We Built
+A full-stack application that enables companies to:
+- Manage employee profiles and department assignments
+- Track daily attendance with automated calculations
+- Handle leave requests through digital workflows
+- Process payroll with automated deductions and bonuses
+- Generate comprehensive reports and analytics
+- Maintain role-based access control for security
 
-This modern employee management system helps organizations to:
-- **Manage employee data efficiently** with intuitive interfaces
-- **Track attendance and working hours** with automated calculations
-- **Handle leave requests and approvals** through streamlined workflows
-- **Automate salary calculations** including bonuses & deductions
-- **Generate comprehensive reports and analytics** with real-time insights
-- **Maintain departmental organization** with role-based access control
+### � Technologies Used
 
----
+#### Backend Stack
+- **Laravel 10+** - Modern PHP framework for robust API development
+- **MySQL 8.0** - Reliable database for data storage
+- **JWT Authentication** - Secure token-based authentication system
+- **Eloquent ORM** - Powerful database abstraction layer
 
-## ✨ Key Features
+#### Frontend Stack
+- **Vue.js 3** - Progressive JavaScript framework with Composition API
+- **Pinia** - Modern state management solution
+- **Tailwind CSS** - Utility-first CSS framework for styling
+- **Chart.js** - Interactive data visualization library
+- **Vite** - Fast build tool and development server
 
-### 🔐 User & Role Management
-- **Multi-role system**: Admin, Manager, Employee with specific permissions
-- **Secure authentication**: JWT-based authentication with token management
-- **User status management**: Active/inactive status tracking
-- **Profile management**: Personal information and preferences
-
-### 👥 Employee Management
-- **Complete CRUD operations**: Create, read, update, delete employees
-- **Department assignment**: Flexible employee-to-department mapping
-- **Employment tracking**: Active, resigned, terminated status management
-- **Search & filtering**: Advanced search with multiple criteria
-- **Bulk operations**: Mass updates and data management
-
-### 🏢 Department Management
-- **Hierarchical structure**: Create and manage department hierarchy
-- **Manager assignment**: Assign managers to specific departments
-- **Employee distribution**: View and analyze department workforce
-- **Department analytics**: Performance metrics per department
-
-### ⏰ Attendance Tracking
-- **Check-in/Check-out system**: Automated time tracking
-- **Late detection**: Smart detection based on work schedules
-- **Overtime calculation**: Automatic overtime computation
-- **Daily attendance**: Comprehensive daily tracking
-- **Monthly summaries**: Detailed monthly attendance reports
-- **Work schedule management**: Flexible scheduling system
-
-### 🏖️ Leave Management
-- **Leave request system**: Easy-to-use leave application process
-- **Approval workflow**: Multi-level approval process
-- **Leave types**: Multiple leave categories (sick, vacation, etc.)
-- **Leave balance tracking**: Automatic balance calculation
-- **Leave history**: Complete leave record management
-
-### 💰 Payroll System
-- **Base salary management**: Flexible salary structure
-- **Automated calculations**:
-  - Late penalties based on attendance
-  - Absence deductions with configurable rates
-  - Overtime bonuses with multiple rates
-- **Manual adjustments**: Custom bonuses and deductions
-- **Monthly payroll generation**: Automated monthly processing
-- **Payroll reports**: Detailed salary breakdowns
-
-### 📊 Reports & Analytics
-- **Real-time dashboards**: Interactive data visualization
-- **Employee reports**: Comprehensive employee analytics
-- **Department distribution**: Visual department analytics
-- **Attendance insights**: Detailed attendance patterns
-- **Salary analytics**: Compensation analysis and trends
-- **Leave statistics**: Leave pattern analysis
-- **Export functionality**: PDF and Excel report generation
-
-### 🔍 Search & Filtering
-- **Dynamic filtering**: Real-time filtering for all data
-- **Advanced search**: Multi-criteria search functionality
-- **Date range filtering**: Flexible date-based queries
-- **Status-based filtering**: Filter by various status types
+#### DevOps & Deployment
+- **Docker & Docker Compose** - Containerization for consistent environments
+- **Railway** - Cloud platform for production deployment
+- **Nginx** - High-performance web server
+- **Git** - Version control system
 
 ---
 
-## 🛠 Tech Stack
+## 🌐 Live Application & Usage
 
-### Backend
-- **Framework**: Laravel 10+ (PHP 8+)
-- **Database**: MySQL 8.0+
-- **ORM**: Eloquent ORM
-- **Authentication**: JWT (JSON Web Tokens)
-- **Validation**: Laravel Form Request Validation
-- **File Storage**: Laravel Storage System
+### 🚀 Access The Application
+**🔗 Live URL**: https://employee-management.up.railway.app
 
-### Frontend
-- **Framework**: Vue.js 3 with Composition API
-- **State Management**: Pinia
-- **Routing**: Vue Router
-- **HTTP Client**: Axios
-- **UI Components**: Custom component library
-- **Charts**: Chart.js for data visualization
-- **Styling**: Tailwind CSS with custom themes
-- **Build Tool**: Vite
+The application is deployed and running on Railway cloud platform with:
+- ✅ SSL certificate enabled (HTTPS)
+- ✅ Auto-scaling infrastructure
+- ✅ Managed database
+- ✅ CI/CD pipeline from GitHub
 
-### Development Tools
-- **Package Management**: Composer (PHP), npm (Node.js)
-- **Documentation**: Postman API Documentation (https://documenter.getpostman.com/view/49027821/2sBXqFM2jB)
+### 🔑 Default Login Accounts
+
+| Role | Email | Password | What You Can Do |
+|------|-------|----------|-----------------|
+| **Admin** | razan@gmail.com | 123456 | Full system access, user management, reports |
+| **Manager** | ahmed@example.com | 123456 | Department management, employee supervision |
+| **Employee** | mohamed@example.com | 123456 | Personal profile, attendance, leave requests |
+
+### � How To Use The System
+
+#### Getting Started
+1. **Open the App**: Click the live URL above
+2. **Login**: Use any of the default accounts
+3. **Explore**: Navigate through the dashboard
+
+#### Key Workflows
+- **👤 Admin**: Add employees, manage departments, generate reports
+- **👨‍💼 Manager**: Approve leaves, monitor attendance, supervise team
+- **👨‍💻 Employee**: Check attendance, request leave, view salary
+
+#### Daily Operations
+1. **Attendance**: Check-in when you arrive, check-out when you leave
+2. **Leaves**: Submit leave requests and wait for approval
+3. **Reports**: View analytics and export data
+4. **Payroll**: Check monthly salary calculations
 
 ---
 
+## 🐳 Docker Setup
 
-## 🚀 Installation
+### 🚀 Quick Docker Start
+```bash
+# Clone and run everything with Docker
+git clone https://github.com/RazanDwikat/Employee-Management-System.git
+cd Employee-Management-System
+docker-compose up -d
+```
+
+### 📋 Docker Services
+Our Docker setup includes three main services:
+
+| Service | Technology | Port | Purpose |
+|---------|------------|------|---------|
+| **Database** | MySQL 8.0 | 3307 | Data storage |
+| **Backend** | Laravel API | 8000 | REST API server |
+| **Frontend** | Vue.js SPA | 3000 | User interface |
+
+### 🔧 Docker Commands
+```bash
+# Start all services in background
+docker-compose up -d
+
+# View real-time logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Rebuild containers (if you make changes)
+docker-compose up --build
+
+# Access backend container
+docker-compose exec backend bash
+
+# Access database container
+docker-compose exec db mysql -u dbuser -p
+```
+
+### 🗄️ Database Configuration
+The Docker setup comes with pre-configured database:
+- **Database Name**: `employee_management_system`
+- **User**: `dbuser`
+- **Password**: `userpassword`
+- **Root Password**: `rootpassword`
+
+### 🌐 Access Points
+After running `docker-compose up -d`:
+- **Frontend Application**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **Database**: localhost:3307 (for external tools)
+
+### 📝 Initial Data Setup
+```bash
+# After containers are running, seed the database
+docker-compose exec backend php artisan db:seed --class=UserSeeder
+```
+
+---
+
+## � Local Development Setup
+
+If you prefer to develop locally without Docker:
 
 ### Prerequisites
-- PHP 8.0 or higher
-- Composer
-- Node.js 16+ and npm
-- MySQL 8.0+
-- Git
+- PHP 8.0+, Composer, Node.js 16+, MySQL 8.0+, Git
 
-### 1. Clone Repository
+### Installation Steps
 ```bash
+# 1. Clone repository
 git clone https://github.com/RazanDwikat/Employee-Management-System.git
-cd employee-management-system
-```
+cd Employee-Management-System
 
-### 2. Backend Setup
-```bash
-# Navigate to backend directory
+# 2. Backend setup
 cd backend
-
-# Install PHP dependencies
 composer install
-
-# Copy environment file
 cp .env.example .env
-
-# Generate application key
 php artisan key:generate
 
-# Configure database in .env file
-DB_DATABASE=employee_management
-DB_USERNAME=root
-DB_PASSWORD=your_password
-
-# Run database migrations
-php artisan migrate
-
-# Start Laravel development server
-php artisan serve
-```
-
-### 3. Frontend Setup
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install Node.js dependencies
-npm install
-
-# Start Vue.js development server
-npm run dev
-```
-
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-Configure the following in your `.env` file:
-
-```env
-# Database Configuration
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
+# 3. Configure .env file
 DB_DATABASE=employee_management_system
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
-
-# JWT Configuration
 JWT_SECRET=your_jwt_secret_key
+
+# 4. Database setup
+php artisan migrate
+php artisan db:seed --class=UserSeeder
+
+# 5. Start backend
+php artisan serve
+
+# 6. Frontend setup (new terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Solutions
+```bash
+# Laravel issues
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+
+# Docker issues
+docker-compose down
+docker-compose up --build
+
+# Frontend issues
+rm -rf node_modules package-lock.json
+npm install
+```
+
+### Database Issues
+- Verify MySQL service is running
+- Check `.env` database credentials
+- Ensure migrations are completed
+
+---
+
+
+**API Docs**: [Postman Documentation](https://documenter.getpostman.com/view/49027821/2sBXqFM2jB)
+
+---
 
 
 
